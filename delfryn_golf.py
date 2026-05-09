@@ -260,9 +260,9 @@ def score_fmt(score: float | int) -> str:
 
 def trend_arrow(current: float, previous: float) -> str:
     """
-    Direction:
-    current higher than previous = red up arrow
-    current lower than previous = green down arrow
+    Golf logic:
+    higher than previous = worse = red up
+    lower than previous = better = green down
     same = flat
     """
     if current > previous:
@@ -405,17 +405,10 @@ def latest_game_number(rows: list[dict]) -> int | None:
 
 
 def previous_collective_average(all_rows: list[dict], game_number: int | None = None) -> float:
-    games = group_by_game(all_rows)
-
-    if not games:
-        return 0
-
     if game_number is None:
         latest = latest_game_number(all_rows)
-
         if latest is None:
             return 0
-
         prev_rows = previous_game_rows(all_rows, latest)
         return collective_average_vs_par(prev_rows) if prev_rows else 0
 
@@ -424,17 +417,10 @@ def previous_collective_average(all_rows: list[dict], game_number: int | None = 
 
 
 def previous_player_average(all_rows: list[dict], player: str, game_number: int | None = None) -> float:
-    games = group_by_game(all_rows)
-
-    if not games:
-        return 0
-
     if game_number is None:
         latest = latest_game_number(all_rows)
-
         if latest is None:
             return 0
-
         prev_rows = previous_game_rows(all_rows, latest)
         return player_average_vs_par(prev_rows, player) if prev_rows else 0
 
@@ -498,7 +484,6 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     total = collective_total_vs_par(rows)
     average = collective_average_vs_par(rows)
     previous = previous_collective_average(all_rows)
-    average_with_arrow = avg_fmt(average, previous)
 
     lines = [
         "<h2>Average vs Par</h2>",
@@ -521,7 +506,7 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     lines += [
         "</div>",
         '<div class="stat-label">Collective average vs par</div>',
-        f'<div class="big-number">{average_with_arrow}</div>',
+        f'<div class="big-number">{avg_fmt(average, previous)}</div>',
         f'<div class="small-detail">overall {score_fmt(total)} between all players</div>',
         f'<div class="small-detail">{total_games(rows)} games · {total_unique_holes(rows)} holes</div>',
         "</div>",
@@ -741,6 +726,93 @@ def full_data_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def games_portal_table(rows: list[dict]) -> str:
+    games = group_by_game(rows)
+
+    lines = [
+        "<h2>Games</h2>",
+        '<div class="table-scroll">',
+        "<table>",
+        "<thead>",
+        "<tr>"
+        "<th>Game</th>"
+        "<th>Date</th>"
+        "<th>Location</th>"
+        "<th>Winner</th>"
+        "<th>Average vs par</th>"
+        "<th>Total vs par</th>"
+        "<th>Total shots</th>"
+        "<th>Holes</th>"
+        "</tr>",
+        "</thead>",
+        "<tbody>",
+    ]
+
+    for game_number, game_rows in games.items():
+        first = game_rows[0]
+        ranking = ranking_by_total(game_rows)
+        winner = ranking[0]
+        avg = collective_average_vs_par(game_rows)
+        prev = previous_collective_average(rows, game_number)
+
+        lines.append(
+            "<tr>"
+            f'<td><a href="game_{game_number}.html">Game {game_number}</a></td>'
+            f"<td>{esc(first['Date'])}</td>"
+            f"<td>{esc(first['Location'])}</td>"
+            f"<td>{esc(winner)}</td>"
+            f"<td>{avg_fmt(avg, prev)}</td>"
+            f"<td>{score_fmt(collective_total_vs_par(game_rows))}</td>"
+            f"<td>{collective_total_shots(game_rows)}</td>"
+            f"<td>{total_unique_holes(game_rows)}</td>"
+            "</tr>"
+        )
+
+    lines += ["</tbody>", "</table>", "</div>"]
+    return "\n".join(lines)
+
+
+def players_portal_table(rows: list[dict]) -> str:
+    players = ranking_by_average(rows)
+
+    lines = [
+        "<h2>Players</h2>",
+        '<div class="table-scroll">',
+        "<table>",
+        "<thead>",
+        "<tr>"
+        "<th>Rank</th>"
+        "<th>Player</th>"
+        "<th>Average vs par</th>"
+        "<th>Total vs par</th>"
+        "<th>Total shots</th>"
+        "<th>Games</th>"
+        "<th>Holes</th>"
+        "</tr>",
+        "</thead>",
+        "<tbody>",
+    ]
+
+    for i, player in enumerate(players, start=1):
+        avg = player_average_vs_par(rows, player)
+        prev = previous_player_average(rows, player)
+
+        lines.append(
+            "<tr>"
+            f"<td>{i}</td>"
+            f'<td><a href="{player.lower()}.html">{esc(player)}</a></td>'
+            f"<td>{avg_fmt(avg, prev)}</td>"
+            f"<td>{score_fmt(player_total_vs_par(rows, player))}</td>"
+            f"<td>{player_total_shots(rows, player)}</td>"
+            f"<td>{total_games(rows)}</td>"
+            f"<td>{player_holes(rows, player)}</td>"
+            "</tr>"
+        )
+
+    lines += ["</tbody>", "</table>", "</div>"]
+    return "\n".join(lines)
+
+
 def player_game_table(player: str, rows: list[dict]) -> str:
     games = group_by_game(rows)
 
@@ -798,14 +870,9 @@ def build_home_page(rows: list[dict], docs: Path) -> None:
 
 def build_games_pages(rows: list[dict], docs: Path) -> None:
     games = group_by_game(rows)
-    index_items = []
 
     for game_number, game_rows in games.items():
         first = game_rows[0]
-        label = f"Game {game_number}: {first['Date']}, {first['Location']}"
-        href = f"game_{game_number}.html"
-
-        index_items.append((href, label))
 
         body = (
             f'<p class="meta">{esc(first["Date"])} — {esc(first["Location"])}</p>'
@@ -815,21 +882,16 @@ def build_games_pages(rows: list[dict], docs: Path) -> None:
             + '<p><a href="index.html">Back to games</a></p>'
         )
 
-        write(docs / "games" / href, page(f"Game {game_number}", body))
+        write(docs / "games" / f"game_{game_number}.html", page(f"Game {game_number}", body))
 
-    body = link_list(index_items)
+    body = games_portal_table(rows)
     body += '<p><a href="../index.html">Back to home</a></p>'
 
     write(docs / "games" / "index.html", page("Games", body))
 
 
 def build_player_pages(rows: list[dict], docs: Path) -> None:
-    index_items = []
-
     for player in PLAYERS:
-        href = f"{player.lower()}.html"
-        index_items.append((href, player))
-
         body = (
             player_average_stat(player, rows)
             + shot_breakdown_table(rows, [player])
@@ -837,9 +899,9 @@ def build_player_pages(rows: list[dict], docs: Path) -> None:
             + '<p><a href="index.html">Back to players</a></p>'
         )
 
-        write(docs / "players" / href, page(player, body))
+        write(docs / "players" / f"{player.lower()}.html", page(player, body))
 
-    body = link_list(index_items)
+    body = players_portal_table(rows)
     body += '<p><a href="../index.html">Back to home</a></p>'
 
     write(docs / "players" / "index.html", page("Players", body))
