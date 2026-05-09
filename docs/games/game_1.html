@@ -13,6 +13,7 @@
             height: 100%;
             box-sizing: border-box;
         }
+
         *, *::before, *::after {
             box-sizing: inherit;
         }
@@ -61,7 +62,6 @@
         @media (min-width: 1024px) {
             .content {
                 max-width: 900px;
-                min-width: 0;
             }
         }
 
@@ -92,14 +92,29 @@
             margin: 0 0 0.45em 0;
         }
 
-        li {
+        ul li {
             margin: 0.5em 0;
             text-indent: -1em;
             padding-left: 1em;
         }
 
-        li::before {
+        ul li::before {
             content: "* ";
+        }
+
+        ol.ranking-list {
+            margin: 0.4em 0 1em 0;
+            padding-left: 1.6em;
+        }
+
+        ol.ranking-list li {
+            text-indent: 0;
+            padding-left: 0;
+            margin: 0.25em 0;
+        }
+
+        ol.ranking-list li::before {
+            content: none;
         }
 
         a {
@@ -117,11 +132,16 @@
             margin: 0.9em 0;
         }
 
-        table {
+        .table-scroll {
             width: 100%;
-            border-collapse: collapse;
+            overflow-x: auto;
             margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
             font-size: 0.9em;
+            min-width: max-content;
         }
 
         th, td {
@@ -129,6 +149,7 @@
             padding: 0.35em 0.45em;
             text-align: left;
             vertical-align: top;
+            white-space: nowrap;
         }
 
         th {
@@ -183,28 +204,31 @@
 <body>
     <div class="content">
 <h1>Game 1</h1>
-<p class="meta">20260509 — Top Golf Watford</p>
-<h2>Par Ranking</h2>
-
+<p class="meta">20260509 — Top Golf Watford</p><h2>Par Ranking</h2>
 <div class="stat">
-    <div class="stat-label">Ranking</div>
-    <p>Tom -1 (-0.06) / Jonny +7 (+0.39) / Ben +15 (+0.83)</p>
-
-    <div class="stat-label">Collective score</div>
-    <div class="big-number">+21 <span class="up">▲</span></div>
-    <div class="small-detail">average +0.39 between all players</div>
-</div>
-<h2>Shot Breakdown</h2>
+<div class="stat-label">Ranking</div>
+<ol class="ranking-list">
+<li><strong>Tom</strong>: -1 <span class="small-detail">(-0.06 average)</span></li>
+<li><strong>Jonny</strong>: +7 <span class="small-detail">(+0.39 average)</span></li>
+<li><strong>Ben</strong>: +15 <span class="small-detail">(+0.83 average)</span></li>
+</ol>
+<div class="stat-label">Collective score</div>
+<div class="big-number">+21 <span class="up">▲</span></div>
+<div class="small-detail">average +0.39 between all players</div>
+</div><h2>Shot Breakdown</h2>
+<div class="table-scroll">
 <table>
 <thead>
-<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total shots</th></tr>
+<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total holes</th><th>Total strokes</th></tr>
 </thead>
 <tbody>
-<tr><td>Tom</td><td>3</td><td>7</td><td>8</td><td>18</td></tr>
-<tr><td>Jonny</td><td>7</td><td>6</td><td>5</td><td>18</td></tr>
-<tr><td>Ben</td><td>8</td><td>7</td><td>3</td><td>18</td></tr>
+<tr><td>Tom</td><td>3</td><td>7</td><td>8</td><td>18</td><td>59</td></tr>
+<tr><td>Jonny</td><td>7</td><td>6</td><td>5</td><td>18</td><td>67</td></tr>
+<tr><td>Ben</td><td>8</td><td>7</td><td>3</td><td>18</td><td>75</td></tr>
 </tbody>
-</table><h2>Scorecard</h2>
+</table>
+</div><h2>Scorecard</h2>
+<div class="table-scroll">
 <table>
 <thead>
 <tr><th>Hole</th><th>Par</th><th>Tom</th><th>Jonny</th><th>Ben</th><th>Starter</th></tr>
@@ -228,7 +252,10 @@
 <tr><td>16</td><td>3</td><td>-1</td><td>0</td><td>+1</td><td>Tom</td></tr>
 <tr><td>17</td><td>3</td><td>0</td><td>0</td><td>+3</td><td>Jonny</td></tr>
 <tr><td>18</td><td>4</td><td>-1</td><td>-1</td><td>+2</td><td>Ben</td></tr>
+<tr><th>Total vs par</th><th>60</th><th>-1</th><th>+7</th><th>+15</th><th></th></tr>
+<tr><th>Total strokes</th><th></th><th>59</th><th>67</th><th>75</th><th></th></tr>
 </tbody>
-</table><p><a href="index.html">Back to games</a></p>    </div>
+</table>
+</div><p><a href="index.html">Back to games</a></p>    </div>
 </body>
 </html>

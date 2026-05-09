@@ -13,6 +13,7 @@
             height: 100%;
             box-sizing: border-box;
         }
+
         *, *::before, *::after {
             box-sizing: inherit;
         }
@@ -61,7 +62,6 @@
         @media (min-width: 1024px) {
             .content {
                 max-width: 900px;
-                min-width: 0;
             }
         }
 
@@ -92,14 +92,29 @@
             margin: 0 0 0.45em 0;
         }
 
-        li {
+        ul li {
             margin: 0.5em 0;
             text-indent: -1em;
             padding-left: 1em;
         }
 
-        li::before {
+        ul li::before {
             content: "* ";
+        }
+
+        ol.ranking-list {
+            margin: 0.4em 0 1em 0;
+            padding-left: 1.6em;
+        }
+
+        ol.ranking-list li {
+            text-indent: 0;
+            padding-left: 0;
+            margin: 0.25em 0;
+        }
+
+        ol.ranking-list li::before {
+            content: none;
         }
 
         a {
@@ -117,11 +132,16 @@
             margin: 0.9em 0;
         }
 
-        table {
+        .table-scroll {
             width: 100%;
-            border-collapse: collapse;
+            overflow-x: auto;
             margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
             font-size: 0.9em;
+            min-width: max-content;
         }
 
         th, td {
@@ -129,6 +149,7 @@
             padding: 0.35em 0.45em;
             text-align: left;
             vertical-align: top;
+            white-space: nowrap;
         }
 
         th {
@@ -183,28 +204,30 @@
 <body>
     <div class="content">
 <h1>Golfryn</h1>
-
-<h2>Average Par</h2>
-
+<h2>Average vs Par</h2>
 <div class="stat">
-    <div class="stat-label">Ranking</div>
-    <p>Tom -0.06 (-1) / Jonny +0.39 (+7) / Ben +0.83 (+15)</p>
-
-    <div class="stat-label">Collective average</div>
-    <div class="big-number">+0.39 <span class="up">▲</span></div>
-    <div class="small-detail">overall +21 between all players</div>
-</div>
-<h2>Shot Breakdown</h2>
+<div class="stat-label">Ranking</div>
+<ol class="ranking-list">
+<li><strong>Tom</strong>: -0.06 <span class="small-detail">(-1 total)</span></li>
+<li><strong>Jonny</strong>: +0.39 <span class="small-detail">(+7 total)</span></li>
+<li><strong>Ben</strong>: +0.83 <span class="small-detail">(+15 total)</span></li>
+</ol>
+<div class="stat-label">Collective average vs par</div>
+<div class="big-number">+0.39 <span class="up">▲</span></div>
+<div class="small-detail">overall +21 between all players</div>
+</div><h2>Shot Breakdown</h2>
+<div class="table-scroll">
 <table>
 <thead>
-<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total shots</th></tr>
+<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total holes</th><th>Total strokes</th></tr>
 </thead>
 <tbody>
-<tr><td>Tom</td><td>3</td><td>7</td><td>8</td><td>18</td></tr>
-<tr><td>Jonny</td><td>7</td><td>6</td><td>5</td><td>18</td></tr>
-<tr><td>Ben</td><td>8</td><td>7</td><td>3</td><td>18</td></tr>
+<tr><td>Tom</td><td>3</td><td>7</td><td>8</td><td>18</td><td>59</td></tr>
+<tr><td>Jonny</td><td>7</td><td>6</td><td>5</td><td>18</td><td>67</td></tr>
+<tr><td>Ben</td><td>8</td><td>7</td><td>3</td><td>18</td><td>75</td></tr>
 </tbody>
-</table><h2>Links</h2><ul>
+</table>
+</div><h2>Links</h2><ul>
 <li><a href="games/index.html">List of games</a></li>
 <li><a href="players/index.html">List of players</a></li>
 <li><a href="data.html">Underlying data</a></li>

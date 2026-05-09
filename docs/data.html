@@ -13,6 +13,7 @@
             height: 100%;
             box-sizing: border-box;
         }
+
         *, *::before, *::after {
             box-sizing: inherit;
         }
@@ -61,7 +62,6 @@
         @media (min-width: 1024px) {
             .content {
                 max-width: 900px;
-                min-width: 0;
             }
         }
 
@@ -92,14 +92,29 @@
             margin: 0 0 0.45em 0;
         }
 
-        li {
+        ul li {
             margin: 0.5em 0;
             text-indent: -1em;
             padding-left: 1em;
         }
 
-        li::before {
+        ul li::before {
             content: "* ";
+        }
+
+        ol.ranking-list {
+            margin: 0.4em 0 1em 0;
+            padding-left: 1.6em;
+        }
+
+        ol.ranking-list li {
+            text-indent: 0;
+            padding-left: 0;
+            margin: 0.25em 0;
+        }
+
+        ol.ranking-list li::before {
+            content: none;
         }
 
         a {
@@ -117,11 +132,16 @@
             margin: 0.9em 0;
         }
 
-        table {
+        .table-scroll {
             width: 100%;
-            border-collapse: collapse;
+            overflow-x: auto;
             margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
             font-size: 0.9em;
+            min-width: max-content;
         }
 
         th, td {
@@ -129,6 +149,7 @@
             padding: 0.35em 0.45em;
             text-align: left;
             vertical-align: top;
+            white-space: nowrap;
         }
 
         th {
@@ -183,6 +204,7 @@
 <body>
     <div class="content">
 <h1>Underlying Data</h1>
+<div class="table-scroll">
 <table>
 <thead>
 <tr><th>Date</th><th>Location</th><th>Game</th><th>Hole</th><th>Par</th><th>Tom</th><th>Jonny</th><th>Ben</th><th>Starter</th></tr>
@@ -207,6 +229,7 @@
 <tr><td>20260509</td><td>Top Golf Watford</td><td>1</td><td>17</td><td>3</td><td>0</td><td>0</td><td>+3</td><td>Jonny</td></tr>
 <tr><td>20260509</td><td>Top Golf Watford</td><td>1</td><td>18</td><td>4</td><td>-1</td><td>-1</td><td>+2</td><td>Ben</td></tr>
 </tbody>
-</table><p><a href="index.html">Back to home</a></p>    </div>
+</table>
+</div><p><a href="index.html">Back to home</a></p>    </div>
 </body>
 </html>

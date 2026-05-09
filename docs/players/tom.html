@@ -13,6 +13,7 @@
             height: 100%;
             box-sizing: border-box;
         }
+
         *, *::before, *::after {
             box-sizing: inherit;
         }
@@ -61,7 +62,6 @@
         @media (min-width: 1024px) {
             .content {
                 max-width: 900px;
-                min-width: 0;
             }
         }
 
@@ -92,14 +92,29 @@
             margin: 0 0 0.45em 0;
         }
 
-        li {
+        ul li {
             margin: 0.5em 0;
             text-indent: -1em;
             padding-left: 1em;
         }
 
-        li::before {
+        ul li::before {
             content: "* ";
+        }
+
+        ol.ranking-list {
+            margin: 0.4em 0 1em 0;
+            padding-left: 1.6em;
+        }
+
+        ol.ranking-list li {
+            text-indent: 0;
+            padding-left: 0;
+            margin: 0.25em 0;
+        }
+
+        ol.ranking-list li::before {
+            content: none;
         }
 
         a {
@@ -117,11 +132,16 @@
             margin: 0.9em 0;
         }
 
-        table {
+        .table-scroll {
             width: 100%;
-            border-collapse: collapse;
+            overflow-x: auto;
             margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
             font-size: 0.9em;
+            min-width: max-content;
         }
 
         th, td {
@@ -129,6 +149,7 @@
             padding: 0.35em 0.45em;
             text-align: left;
             vertical-align: top;
+            white-space: nowrap;
         }
 
         th {
@@ -184,7 +205,7 @@
     <div class="content">
 <h1>Tom</h1>
 
-<h2>Average Par</h2>
+<h2>Average vs Par</h2>
 
 <div class="stat">
     <div class="stat-label">Tom</div>
@@ -192,21 +213,25 @@
     <div class="small-detail">overall -1</div>
 </div>
 <h2>Shot Breakdown</h2>
+<div class="table-scroll">
 <table>
 <thead>
-<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total shots</th></tr>
+<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total holes</th><th>Total strokes</th></tr>
 </thead>
 <tbody>
-<tr><td>Tom</td><td>3</td><td>7</td><td>8</td><td>18</td></tr>
+<tr><td>Tom</td><td>3</td><td>7</td><td>8</td><td>18</td><td>59</td></tr>
 </tbody>
-</table><h2>Games</h2>
+</table>
+</div><h2>Games</h2>
+<div class="table-scroll">
 <table>
 <thead>
-<tr><th>Game</th><th>Date</th><th>Location</th><th>Total par</th><th>Average par</th></tr>
+<tr><th>Game</th><th>Date</th><th>Location</th><th>Total vs par</th><th>Average vs par</th><th>Total strokes</th></tr>
 </thead>
 <tbody>
-<tr><td><a href="../games/game_1.html">Game 1</a></td><td>20260509</td><td>Top Golf Watford</td><td>-1</td><td>-0.06</td></tr>
+<tr><td><a href="../games/game_1.html">Game 1</a></td><td>20260509</td><td>Top Golf Watford</td><td>-1</td><td>-0.06</td><td>59</td></tr>
 </tbody>
-</table><p><a href="index.html">Back to players</a></p>    </div>
+</table>
+</div><p><a href="index.html">Back to players</a></p>    </div>
 </body>
 </html>

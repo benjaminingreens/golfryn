@@ -13,12 +13,8 @@ CSV_FILE = "delfryn_golf.csv"
 DOCS_DIR = "docs"
 SITE_TITLE = "Golfryn"
 
-PLAYER_COLUMNS = ["Tom", "Jonny", "Ben"]
+PLAYERS = ["Tom", "Jonny", "Ben"]
 
-
-# ----------------------------
-# HTML template
-# ----------------------------
 
 HTML_START = """<!DOCTYPE html>
 <html lang="en">
@@ -35,6 +31,7 @@ HTML_START = """<!DOCTYPE html>
             height: 100%;
             box-sizing: border-box;
         }
+
         *, *::before, *::after {
             box-sizing: inherit;
         }
@@ -83,7 +80,6 @@ HTML_START = """<!DOCTYPE html>
         @media (min-width: 1024px) {
             .content {
                 max-width: 900px;
-                min-width: 0;
             }
         }
 
@@ -114,14 +110,29 @@ HTML_START = """<!DOCTYPE html>
             margin: 0 0 0.45em 0;
         }
 
-        li {
+        ul li {
             margin: 0.5em 0;
             text-indent: -1em;
             padding-left: 1em;
         }
 
-        li::before {
+        ul li::before {
             content: "* ";
+        }
+
+        ol.ranking-list {
+            margin: 0.4em 0 1em 0;
+            padding-left: 1.6em;
+        }
+
+        ol.ranking-list li {
+            text-indent: 0;
+            padding-left: 0;
+            margin: 0.25em 0;
+        }
+
+        ol.ranking-list li::before {
+            content: none;
         }
 
         a {
@@ -139,11 +150,16 @@ HTML_START = """<!DOCTYPE html>
             margin: 0.9em 0;
         }
 
-        table {
+        .table-scroll {
             width: 100%;
-            border-collapse: collapse;
+            overflow-x: auto;
             margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
             font-size: 0.9em;
+            min-width: max-content;
         }
 
         th, td {
@@ -151,6 +167,7 @@ HTML_START = """<!DOCTYPE html>
             padding: 0.35em 0.45em;
             text-align: left;
             vertical-align: top;
+            white-space: nowrap;
         }
 
         th {
@@ -212,12 +229,15 @@ HTML_END = """    </div>
 """
 
 
-# ----------------------------
-# Data
-# ----------------------------
-
 def esc(value: object) -> str:
     return html.escape(str(value), quote=True)
+
+
+def score_fmt(score: float | int) -> str:
+    if isinstance(score, float):
+        return f"+{score:.2f}" if score > 0 else f"{score:.2f}"
+
+    return f"+{score}" if score > 0 else str(score)
 
 
 def read_rows(filename: str = CSV_FILE) -> list[dict]:
@@ -236,28 +256,12 @@ def read_rows(filename: str = CSV_FILE) -> list[dict]:
                 "Starter": row["Starter"],
             }
 
-            for player in PLAYER_COLUMNS:
+            for player in PLAYERS:
                 clean[player] = int(row[player]) if row[player] != "" else None
 
             rows.append(clean)
 
     return rows
-
-
-def score_fmt(score: float | int) -> str:
-    if isinstance(score, float):
-        rounded = round(score, 2)
-        if rounded > 0:
-            return f"+{rounded:.2f}"
-        return f"{rounded:.2f}"
-
-    if score > 0:
-        return f"+{score}"
-    return str(score)
-
-
-def strokes(score_vs_par: int, par: int) -> int:
-    return par + score_vs_par
 
 
 def group_by_game(rows: list[dict]) -> dict[int, list[dict]]:
@@ -269,74 +273,99 @@ def group_by_game(rows: list[dict]) -> dict[int, list[dict]]:
     return dict(sorted(games.items()))
 
 
-# ----------------------------
-# Stats
-# ----------------------------
-
-def player_summary(rows: list[dict]) -> dict[str, dict]:
-    out = {}
-
-    for player in PLAYER_COLUMNS:
-        scores = [
-            row[player]
-            for row in rows
-            if row[player] is not None
-        ]
-
-        total = sum(scores)
-        count = len(scores)
-        average = total / count if count else 0
-
-        out[player] = {
-            "total": total,
-            "average": average,
-            "shots": count,
-        }
-
-    return out
+def strokes(score_vs_par: int, par: int) -> int:
+    return par + score_vs_par
 
 
-def collective_summary(rows: list[dict]) -> dict:
-    scores = []
-
-    for row in rows:
-        for player in PLAYER_COLUMNS:
-            if row[player] is not None:
-                scores.append(row[player])
-
-    total = sum(scores)
-    count = len(scores)
-    average = total / count if count else 0
-
-    return {
-        "total": total,
-        "average": average,
-        "shots": count,
-    }
+def player_total(rows: list[dict], player: str) -> int:
+    return sum(row[player] for row in rows if row[player] is not None)
 
 
-def ranking_by_average(rows: list[dict]) -> list[tuple[str, dict]]:
-    summary = player_summary(rows)
+def player_holes(rows: list[dict], player: str) -> int:
+    return sum(1 for row in rows if row[player] is not None)
 
-    return sorted(
-        summary.items(),
-        key=lambda item: (item[1]["average"], item[1]["total"])
+
+def player_average(rows: list[dict], player: str) -> float:
+    holes = player_holes(rows, player)
+    return player_total(rows, player) / holes if holes else 0
+
+
+def player_strokes(rows: list[dict], player: str) -> int:
+    return sum(
+        strokes(row[player], row["Par"])
+        for row in rows
+        if row[player] is not None
     )
 
 
-def ranking_by_total(rows: list[dict]) -> list[tuple[str, dict]]:
-    summary = player_summary(rows)
+def collective_total(rows: list[dict]) -> int:
+    return sum(player_total(rows, player) for player in PLAYERS)
 
+
+def collective_holes(rows: list[dict]) -> int:
+    return sum(player_holes(rows, player) for player in PLAYERS)
+
+
+def collective_average(rows: list[dict]) -> float:
+    holes = collective_holes(rows)
+    return collective_total(rows) / holes if holes else 0
+
+
+def ranking_by_average(rows: list[dict]) -> list[str]:
     return sorted(
-        summary.items(),
-        key=lambda item: (item[1]["total"], item[1]["average"])
+        PLAYERS,
+        key=lambda player: (
+            player_average(rows, player),
+            player_total(rows, player),
+        )
     )
 
 
-def shot_breakdown(rows: list[dict]) -> dict[str, dict]:
+def ranking_by_total(rows: list[dict]) -> list[str]:
+    return sorted(
+        PLAYERS,
+        key=lambda player: (
+            player_total(rows, player),
+            player_average(rows, player),
+        )
+    )
+
+
+def previous_game_average(all_rows: list[dict], game_number: int | None = None) -> float:
+    games = group_by_game(all_rows)
+
+    if not games:
+        return 0
+
+    if game_number is None:
+        game_numbers = sorted(games)
+
+        if len(game_numbers) < 2:
+            return 0
+
+        return collective_average(games[game_numbers[-2]])
+
+    previous_games = [g for g in sorted(games) if g < game_number]
+
+    if not previous_games:
+        return 0
+
+    return collective_average(games[previous_games[-1]])
+
+
+def trend_arrow(current: float, previous: float) -> str:
+    # In golf, lower is better.
+    if current > previous:
+        return '<span class="up">▲</span>'
+    if current < previous:
+        return '<span class="down">▼</span>'
+    return '<span class="flat">■</span>'
+
+
+def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
     out = {}
 
-    for player in PLAYER_COLUMNS:
+    for player in PLAYERS:
         over = 0
         par = 0
         under = 0
@@ -358,58 +387,20 @@ def shot_breakdown(rows: list[dict]) -> dict[str, dict]:
             "Over par": over,
             "Par": par,
             "Under par": under,
-            "Total shots": over + par + under,
+            "Total holes": over + par + under,
+            "Total strokes": player_strokes(rows, player),
         }
 
     return out
 
 
-def trend_arrow(current: float, previous: float) -> str:
-    """
-    For golf, lower is better:
-      current > previous = worse = red up
-      current < previous = better = green down
-    """
-    if current > previous:
-        return '<span class="up">▲</span>'
-    if current < previous:
-        return '<span class="down">▼</span>'
-    return '<span class="flat">■</span>'
-
-
-def previous_collective_average(rows: list[dict], current_game: int | None = None) -> float:
-    games = group_by_game(rows)
-
-    if current_game is None:
-        # Main page: compare latest game against previous game.
-        game_numbers = sorted(games)
-
-        if len(game_numbers) < 2:
-            return 0
-
-        previous_game = game_numbers[-2]
-        return collective_summary(games[previous_game])["average"]
-
-    # Game page: compare this game against the game immediately before it.
-    previous_games = [g for g in sorted(games) if g < current_game]
-
-    if not previous_games:
-        return 0
-
-    return collective_summary(games[previous_games[-1]])["average"]
-
-
-# ----------------------------
-# HTML chunks
-# ----------------------------
-
 def page(title: str, body: str) -> str:
-    return (
-        HTML_START
-        + f"<h1>{esc(title)}</h1>\n"
-        + body
-        + HTML_END
-    )
+    return HTML_START + f"<h1>{esc(title)}</h1>\n" + body + HTML_END
+
+
+def write(path: Path, html_text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html_text, encoding="utf-8")
 
 
 def link_list(items: list[tuple[str, str]]) -> str:
@@ -422,106 +413,125 @@ def link_list(items: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def average_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
+def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     ranking = ranking_by_average(rows)
-    collective = collective_summary(rows)
+    total = collective_total(rows)
+    average = collective_average(rows)
 
-    # Main page compares latest game with previous game.
     games = group_by_game(all_rows)
     latest_game = max(games) if games else None
-    previous = previous_collective_average(all_rows, latest_game)
-    arrow = trend_arrow(collective["average"], previous)
+    previous = previous_game_average(all_rows, latest_game)
+    arrow = trend_arrow(average, previous)
 
-    rank_text = " / ".join(
-        f"{player} {score_fmt(data['average'])} ({score_fmt(data['total'])})"
-        for player, data in ranking
-    )
+    lines = [
+        "<h2>Average vs Par</h2>",
+        '<div class="stat">',
+        '<div class="stat-label">Ranking</div>',
+        '<ol class="ranking-list">',
+    ]
 
-    return f"""
-<h2>Average Par</h2>
+    for player in ranking:
+        lines.append(
+            f"<li><strong>{esc(player)}</strong>: "
+            f"{score_fmt(player_average(rows, player))} "
+            f'<span class="small-detail">({score_fmt(player_total(rows, player))} total)</span>'
+            "</li>"
+        )
 
-<div class="stat">
-    <div class="stat-label">Ranking</div>
-    <p>{rank_text}</p>
+    lines += [
+        "</ol>",
+        '<div class="stat-label">Collective average vs par</div>',
+        f'<div class="big-number">{score_fmt(average)} {arrow}</div>',
+        f'<div class="small-detail">overall {score_fmt(total)} between all players</div>',
+        "</div>",
+    ]
 
-    <div class="stat-label">Collective average</div>
-    <div class="big-number">{score_fmt(collective["average"])} {arrow}</div>
-    <div class="small-detail">overall {score_fmt(collective["total"])} between all players</div>
-</div>
-"""
+    return "\n".join(lines)
 
 
-def game_par_stat(game_rows: list[dict], all_rows: list[dict], game_number: int) -> str:
+def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_number: int) -> str:
     ranking = ranking_by_total(game_rows)
-    collective = collective_summary(game_rows)
-    previous = previous_collective_average(all_rows, game_number)
-    arrow = trend_arrow(collective["average"], previous)
+    total = collective_total(game_rows)
+    average = collective_average(game_rows)
+    previous = previous_game_average(all_rows, game_number)
+    arrow = trend_arrow(average, previous)
 
-    rank_text = " / ".join(
-        f"{player} {score_fmt(data['total'])} ({score_fmt(data['average'])})"
-        for player, data in ranking
-    )
+    lines = [
+        "<h2>Par Ranking</h2>",
+        '<div class="stat">',
+        '<div class="stat-label">Ranking</div>',
+        '<ol class="ranking-list">',
+    ]
 
-    return f"""
-<h2>Par Ranking</h2>
+    for player in ranking:
+        lines.append(
+            f"<li><strong>{esc(player)}</strong>: "
+            f"{score_fmt(player_total(game_rows, player))} "
+            f'<span class="small-detail">({score_fmt(player_average(game_rows, player))} average)</span>'
+            "</li>"
+        )
 
-<div class="stat">
-    <div class="stat-label">Ranking</div>
-    <p>{rank_text}</p>
+    lines += [
+        "</ol>",
+        '<div class="stat-label">Collective score</div>',
+        f'<div class="big-number">{score_fmt(total)} {arrow}</div>',
+        f'<div class="small-detail">average {score_fmt(average)} between all players</div>',
+        "</div>",
+    ]
 
-    <div class="stat-label">Collective score</div>
-    <div class="big-number">{score_fmt(collective["total"])} {arrow}</div>
-    <div class="small-detail">average {score_fmt(collective["average"])} between all players</div>
-</div>
-"""
+    return "\n".join(lines)
 
 
 def player_average_stat(player: str, rows: list[dict]) -> str:
-    summary = player_summary(rows)[player]
-
     return f"""
-<h2>Average Par</h2>
+<h2>Average vs Par</h2>
 
 <div class="stat">
     <div class="stat-label">{esc(player)}</div>
-    <div class="big-number">{score_fmt(summary["average"])}</div>
-    <div class="small-detail">overall {score_fmt(summary["total"])}</div>
+    <div class="big-number">{score_fmt(player_average(rows, player))}</div>
+    <div class="small-detail">overall {score_fmt(player_total(rows, player))}</div>
 </div>
 """
 
 
 def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> str:
-    players = players or PLAYER_COLUMNS
-    breakdown = shot_breakdown(rows)
+    players = players or PLAYERS
+    data = shot_breakdown(rows)
 
     lines = [
         "<h2>Shot Breakdown</h2>",
+        '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total shots</th></tr>",
+        "<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total holes</th><th>Total strokes</th></tr>",
         "</thead>",
         "<tbody>",
     ]
 
     for player in players:
-        data = breakdown[player]
+        d = data[player]
+
         lines.append(
             "<tr>"
             f"<td>{esc(player)}</td>"
-            f"<td>{data['Over par']}</td>"
-            f"<td>{data['Par']}</td>"
-            f"<td>{data['Under par']}</td>"
-            f"<td>{data['Total shots']}</td>"
+            f"<td>{d['Over par']}</td>"
+            f"<td>{d['Par']}</td>"
+            f"<td>{d['Under par']}</td>"
+            f"<td>{d['Total holes']}</td>"
+            f"<td>{d['Total strokes']}</td>"
             "</tr>"
         )
 
-    lines += ["</tbody>", "</table>"]
+    lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
 
 
 def scorecard_table(rows: list[dict]) -> str:
+    total_par = sum(row["Par"] for row in rows)
+
     lines = [
         "<h2>Scorecard</h2>",
+        '<div class="table-scroll">',
         "<table>",
         "<thead>",
         "<tr><th>Hole</th><th>Par</th><th>Tom</th><th>Jonny</th><th>Ben</th><th>Starter</th></tr>",
@@ -541,12 +551,35 @@ def scorecard_table(rows: list[dict]) -> str:
             "</tr>"
         )
 
-    lines += ["</tbody>", "</table>"]
+    lines.append(
+        "<tr>"
+        "<th>Total vs par</th>"
+        f"<th>{total_par}</th>"
+        f"<th>{score_fmt(player_total(rows, 'Tom'))}</th>"
+        f"<th>{score_fmt(player_total(rows, 'Jonny'))}</th>"
+        f"<th>{score_fmt(player_total(rows, 'Ben'))}</th>"
+        "<th></th>"
+        "</tr>"
+    )
+
+    lines.append(
+        "<tr>"
+        "<th>Total strokes</th>"
+        "<th></th>"
+        f"<th>{player_strokes(rows, 'Tom')}</th>"
+        f"<th>{player_strokes(rows, 'Jonny')}</th>"
+        f"<th>{player_strokes(rows, 'Ben')}</th>"
+        "<th></th>"
+        "</tr>"
+    )
+
+    lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
 
 
 def full_data_table(rows: list[dict]) -> str:
     lines = [
+        '<div class="table-scroll">',
         "<table>",
         "<thead>",
         "<tr><th>Date</th><th>Location</th><th>Game</th><th>Hole</th><th>Par</th><th>Tom</th><th>Jonny</th><th>Ben</th><th>Starter</th></tr>",
@@ -569,23 +602,44 @@ def full_data_table(rows: list[dict]) -> str:
             "</tr>"
         )
 
-    lines += ["</tbody>", "</table>"]
+    lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
 
 
-# ----------------------------
-# Pages
-# ----------------------------
+def player_game_table(player: str, rows: list[dict]) -> str:
+    games = group_by_game(rows)
 
-def write(path: Path, html_text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(html_text, encoding="utf-8")
+    lines = [
+        "<h2>Games</h2>",
+        '<div class="table-scroll">',
+        "<table>",
+        "<thead>",
+        "<tr><th>Game</th><th>Date</th><th>Location</th><th>Total vs par</th><th>Average vs par</th><th>Total strokes</th></tr>",
+        "</thead>",
+        "<tbody>",
+    ]
+
+    for game_number, game_rows in games.items():
+        first = game_rows[0]
+
+        lines.append(
+            "<tr>"
+            f'<td><a href="../games/game_{game_number}.html">Game {game_number}</a></td>'
+            f"<td>{esc(first['Date'])}</td>"
+            f"<td>{esc(first['Location'])}</td>"
+            f"<td>{score_fmt(player_total(game_rows, player))}</td>"
+            f"<td>{score_fmt(player_average(game_rows, player))}</td>"
+            f"<td>{player_strokes(game_rows, player)}</td>"
+            "</tr>"
+        )
+
+    lines += ["</tbody>", "</table>", "</div>"]
+    return "\n".join(lines)
 
 
 def build_home_page(rows: list[dict], docs: Path) -> None:
     body = ""
-
-    body += average_par_stat(rows, rows)
+    body += average_vs_par_stat(rows, rows)
     body += shot_breakdown_table(rows)
 
     body += "<h2>Links</h2>"
@@ -600,7 +654,6 @@ def build_home_page(rows: list[dict], docs: Path) -> None:
 
 def build_games_pages(rows: list[dict], docs: Path) -> None:
     games = group_by_game(rows)
-
     index_items = []
 
     for game_number, game_rows in games.items():
@@ -611,30 +664,24 @@ def build_games_pages(rows: list[dict], docs: Path) -> None:
 
         body = (
             f'<p class="meta">{esc(first["Date"])} — {esc(first["Location"])}</p>'
-            + game_par_stat(game_rows, rows, game_number)
+            + game_par_ranking_stat(game_rows, rows, game_number)
             + shot_breakdown_table(game_rows)
             + scorecard_table(game_rows)
             + '<p><a href="index.html">Back to games</a></p>'
         )
 
-        write(
-            docs / "games" / href,
-            page(f"Game {game_number}", body)
-        )
+        write(docs / "games" / href, page(f"Game {game_number}", body))
 
     body = link_list(index_items)
     body += '<p><a href="../index.html">Back to home</a></p>'
 
-    write(
-        docs / "games" / "index.html",
-        page("Games", body)
-    )
+    write(docs / "games" / "index.html", page("Games", body))
 
 
 def build_player_pages(rows: list[dict], docs: Path) -> None:
     index_items = []
 
-    for player in PLAYER_COLUMNS:
+    for player in PLAYERS:
         href = f"{player.lower()}.html"
         index_items.append((href, player))
 
@@ -645,60 +692,19 @@ def build_player_pages(rows: list[dict], docs: Path) -> None:
             + '<p><a href="index.html">Back to players</a></p>'
         )
 
-        write(
-            docs / "players" / href,
-            page(player, body)
-        )
+        write(docs / "players" / href, page(player, body))
 
     body = link_list(index_items)
     body += '<p><a href="../index.html">Back to home</a></p>'
 
-    write(
-        docs / "players" / "index.html",
-        page("Players", body)
-    )
-
-
-def player_game_table(player: str, rows: list[dict]) -> str:
-    games = group_by_game(rows)
-
-    lines = [
-        "<h2>Games</h2>",
-        "<table>",
-        "<thead>",
-        "<tr><th>Game</th><th>Date</th><th>Location</th><th>Total par</th><th>Average par</th></tr>",
-        "</thead>",
-        "<tbody>",
-    ]
-
-    for game_number, game_rows in games.items():
-        first = game_rows[0]
-        scores = [row[player] for row in game_rows if row[player] is not None]
-        total = sum(scores)
-        average = total / len(scores) if scores else 0
-
-        lines.append(
-            "<tr>"
-            f'<td><a href="../games/game_{game_number}.html">Game {game_number}</a></td>'
-            f"<td>{esc(first['Date'])}</td>"
-            f"<td>{esc(first['Location'])}</td>"
-            f"<td>{score_fmt(total)}</td>"
-            f"<td>{score_fmt(average)}</td>"
-            "</tr>"
-        )
-
-    lines += ["</tbody>", "</table>"]
-    return "\n".join(lines)
+    write(docs / "players" / "index.html", page("Players", body))
 
 
 def build_data_page(rows: list[dict], docs: Path) -> None:
     body = full_data_table(rows)
     body += '<p><a href="index.html">Back to home</a></p>'
 
-    write(
-        docs / "data.html",
-        page("Underlying Data", body)
-    )
+    write(docs / "data.html", page("Underlying Data", body))
 
 
 def build_site() -> None:
