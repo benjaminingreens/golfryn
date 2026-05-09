@@ -647,30 +647,31 @@ def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
     under_total = total_eagle_plus + total_birdies
     over_total = total_bogeys + total_double_bogeys + total_triple_plus
 
-    lines.append(
-        "<tr>"
-        "<th>Total</th>"
-        f"<th>{total_eagle_plus}</th>"
-        f"<th>{total_birdies}</th>"
-        f"<th>{total_par}</th>"
-        f"<th>{total_bogeys}</th>"
-        f"<th>{total_double_bogeys}</th>"
-        f"<th>{total_triple_plus}</th>"
-        f"<th>{total_shots}</th>"
-        f"<th>{score_fmt(total_vs_par)}</th>"
-        "</tr>"
-    )
-
-    lines.append(
-        "<tr>"
-        "<th>Grouped total</th>"
-        f'<th colspan="2">{under_total} under par holes</th>'
-        f"<th>{total_par} par holes</th>"
-        f'<th colspan="3">{over_total} over par holes</th>'
-        f"<th>{total_shots}</th>"
-        f"<th>{score_fmt(total_vs_par)}</th>"
-        "</tr>"
-    )
+    if len(players) > 1:
+        lines.append(
+            "<tr>"
+            "<th>Total</th>"
+            f"<th>{total_eagle_plus}</th>"
+            f"<th>{total_birdies}</th>"
+            f"<th>{total_par}</th>"
+            f"<th>{total_bogeys}</th>"
+            f"<th>{total_double_bogeys}</th>"
+            f"<th>{total_triple_plus}</th>"
+            f"<th>{total_shots}</th>"
+            f"<th>{score_fmt(total_vs_par)}</th>"
+            "</tr>"
+        )
+    
+        lines.append(
+            "<tr>"
+            "<th>Grouped total</th>"
+            f'<th colspan="2">{under_total} under par holes</th>'
+            f"<th>{total_par} par holes</th>"
+            f'<th colspan="3">{over_total} over par holes</th>'
+            f"<th>{total_shots}</th>"
+            f"<th>{score_fmt(total_vs_par)}</th>"
+            "</tr>"
+        )
 
     lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
