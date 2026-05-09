@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        html {
+            height: 100%;
+            box-sizing: border-box;
+        }
+        *, *::before, *::after {
+            box-sizing: inherit;
+        }
+
+        body {
+            font-family: "IBM Plex Mono",
+                         ui-monospace,
+                         SFMono-Regular,
+                         Menlo,
+                         Monaco,
+                         Consolas,
+                         "Liberation Mono",
+                         "Courier New",
+                         monospace;
+
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+
+            min-height: 100%;
+            margin: 0;
+            padding: 14px 20px 20px 20px;
+
+            background-color: black;
+            color: white;
+
+            font-size: 19px;
+            line-height: 1.7;
+
+            overflow-x: hidden;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 28px 50px 50px 50px;
+                font-size: 22px;
+            }
+        }
+
+        .content {
+            max-width: 600px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        @media (min-width: 1024px) {
+            .content {
+                max-width: 900px;
+                min-width: 0;
+            }
+        }
+
+        .content,
+        .content * {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            hyphens: auto;
+        }
+
+        h1, h2, h3 {
+            text-align: left;
+            line-height: 1.2;
+            margin: 0 0 0.45em 0;
+        }
+
+        h1 { font-size: 2em; font-weight: 700; }
+        h2 { font-size: 1.5em; font-weight: 700; margin-top: 1.2em; }
+        h3 { font-size: 1.25em; font-weight: 600; margin-top: 1em; }
+
+        p {
+            margin: 0 0 0.45em 0;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 0.45em 0;
+        }
+
+        li {
+            margin: 0.5em 0;
+            text-indent: -1em;
+            padding-left: 1em;
+        }
+
+        li::before {
+            content: "* ";
+        }
+
+        a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        a:hover {
+            text-decoration: none;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #444;
+            margin: 0.9em 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.8em 0 1.2em 0;
+            font-size: 0.9em;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 0.35em 0.45em;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            font-weight: 700;
+        }
+
+        .stat {
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 0.8em 1em;
+            margin: 0.8em 0 1em 0;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #ccc;
+            margin-bottom: 0.2em;
+        }
+
+        .big-number {
+            font-size: 2.4em;
+            line-height: 1.1;
+            font-weight: 700;
+        }
+
+        .small-detail {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+
+        .up {
+            color: #ff6b6b;
+            font-weight: 700;
+        }
+
+        .down {
+            color: #51cf66;
+            font-weight: 700;
+        }
+
+        .flat {
+            color: #ccc;
+            font-weight: 700;
+        }
+
+        .meta {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+<h1>Jonny</h1>
+
+<h2>Average Par</h2>
+
+<div class="stat">
+    <div class="stat-label">Jonny</div>
+    <div class="big-number">+0.39</div>
+    <div class="small-detail">overall +7</div>
+</div>
+<h2>Shot Breakdown</h2>
+<table>
+<thead>
+<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total shots</th></tr>
+</thead>
+<tbody>
+<tr><td>Jonny</td><td>7</td><td>6</td><td>5</td><td>18</td></tr>
+</tbody>
+</table><h2>Games</h2>
+<table>
+<thead>
+<tr><th>Game</th><th>Date</th><th>Location</th><th>Total par</th><th>Average par</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="../games/game_1.html">Game 1</a></td><td>20260509</td><td>Top Golf Watford</td><td>+7</td><td>+0.39</td></tr>
+</tbody>
+</table><p><a href="index.html">Back to players</a></p>    </div>
+</body>
+</html>
