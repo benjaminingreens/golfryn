@@ -657,22 +657,30 @@ def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
             f"<th>{total_bogeys}</th>"
             f"<th>{total_double_bogeys}</th>"
             f"<th>{total_triple_plus}</th>"
+            f'<th rowspan="2">{total_shots}</th>'
+            f'<th rowspan="2">{score_fmt(total_vs_par)}</th>'
+            "</tr>"
+        )
+
+        lines.append(
+            "<tr>"
+            "<th>Grouped total</th>"
+            f'<th colspan="2">{under_total} under par holes</th>'
+            f"<th>{total_par} par holes</th>"
+            f'<th colspan="3">{over_total} over par holes</th>'
+            "</tr>"
+        )
+    else:
+        lines.append(
+            "<tr>"
+            "<th>Grouped total</th>"
+            f'<th colspan="2">{under_total} under par holes</th>'
+            f"<th>{total_par} par holes</th>"
+            f'<th colspan="3">{over_total} over par holes</th>'
             f"<th>{total_shots}</th>"
             f"<th>{score_fmt(total_vs_par)}</th>"
             "</tr>"
         )
-
-    # Always show this, including individual player pages.
-    lines.append(
-        "<tr>"
-        "<th>Grouped total</th>"
-        f'<th colspan="2">{under_total} under par holes</th>'
-        f"<th>{total_par} par holes</th>"
-        f'<th colspan="3">{over_total} over par holes</th>'
-        f"<th>{total_shots}</th>"
-        f"<th>{score_fmt(total_vs_par)}</th>"
-        "</tr>"
-    )
 
     lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
