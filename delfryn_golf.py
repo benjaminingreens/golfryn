@@ -235,6 +235,15 @@ HTML_START = """<!DOCTYPE html>
         th {
             font-weight: 700;
         }
+
+        .shaded {
+            background-color: #1a1a1a;
+            color: #777;
+        }
+
+        .strong-total {
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -594,6 +603,8 @@ def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
     total_shots = 0
     total_vs_par = 0
 
+    is_single_player = len(players) == 1
+
     lines = [
         "<h2>Hole Breakdown</h2>",
         '<div class="table-scroll">',
@@ -630,6 +641,8 @@ def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
         total_shots += d["Total shots"]
         total_vs_par += d["Total vs par"]
 
+        total_class = ' class="strong-total"' if is_single_player else ""
+
         lines.append(
             "<tr>"
             f"<td>{esc(player)}</td>"
@@ -639,8 +652,8 @@ def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
             f"<td>{d['Bogeys']}</td>"
             f"<td>{d['Double bogeys']}</td>"
             f"<td>{d['Triple+']}</td>"
-            f"<td>{d['Total shots']}</td>"
-            f"<td>{score_fmt(d['Total vs par'])}</td>"
+            f"<td{total_class}>{d['Total shots']}</td>"
+            f"<td{total_class}>{score_fmt(d['Total vs par'])}</td>"
             "</tr>"
         )
 
@@ -657,30 +670,21 @@ def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
             f"<th>{total_bogeys}</th>"
             f"<th>{total_double_bogeys}</th>"
             f"<th>{total_triple_plus}</th>"
-            f'<th rowspan="2">{total_shots}</th>'
-            f'<th rowspan="2">{score_fmt(total_vs_par)}</th>'
-            "</tr>"
-        )
-
-        lines.append(
-            "<tr>"
-            "<th>Grouped total</th>"
-            f'<th colspan="2">{under_total} under par holes</th>'
-            f"<th>{total_par} par holes</th>"
-            f'<th colspan="3">{over_total} over par holes</th>'
-            "</tr>"
-        )
-    else:
-        lines.append(
-            "<tr>"
-            "<th>Grouped total</th>"
-            f'<th colspan="2">{under_total} under par holes</th>'
-            f"<th>{total_par} par holes</th>"
-            f'<th colspan="3">{over_total} over par holes</th>'
             f"<th>{total_shots}</th>"
             f"<th>{score_fmt(total_vs_par)}</th>"
             "</tr>"
         )
+
+    lines.append(
+        "<tr>"
+        "<th>Grouped total</th>"
+        f'<th colspan="2">{under_total} under par holes</th>'
+        f"<th>{total_par} par holes</th>"
+        f'<th colspan="3">{over_total} over par holes</th>'
+        '<th class="shaded"></th>'
+        '<th class="shaded"></th>'
+        "</tr>"
+    )
 
     lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
