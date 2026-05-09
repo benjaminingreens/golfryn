@@ -428,13 +428,16 @@ def previous_player_average(all_rows: list[dict], player: str, game_number: int 
     return player_average_vs_par(prev_rows, player) if prev_rows else 0
 
 
-def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
+def hole_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
     out = {}
 
     for player in PLAYERS:
-        over = 0
-        par = 0
-        under = 0
+        eagle_plus = 0
+        birdies = 0
+        pars = 0
+        bogeys = 0
+        double_bogeys = 0
+        triple_plus = 0
 
         for row in rows:
             score = row[player]
@@ -442,17 +445,28 @@ def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
             if score is None:
                 continue
 
-            if score > 0:
-                over += 1
+            if score <= -2:
+                eagle_plus += 1
+            elif score == -1:
+                birdies += 1
             elif score == 0:
-                par += 1
+                pars += 1
+            elif score == 1:
+                bogeys += 1
+            elif score == 2:
+                double_bogeys += 1
             else:
-                under += 1
+                triple_plus += 1
 
         out[player] = {
-            "Over par holes": over,
-            "Par holes": par,
-            "Under par holes": under,
+            "Eagle+": eagle_plus,
+            "Birdies": birdies,
+            "Par": pars,
+            "Bogeys": bogeys,
+            "Double bogeys": double_bogeys,
+            "Triple+": triple_plus,
+            "Under par holes": eagle_plus + birdies,
+            "Over par holes": bogeys + double_bogeys + triple_plus,
             "Total shots": player_total_shots(rows, player),
             "Total vs par": player_total_vs_par(rows, player),
         }
@@ -569,26 +583,36 @@ def player_average_stat(player: str, rows: list[dict]) -> str:
 
 def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> str:
     players = players or PLAYERS
-    data = shot_breakdown(rows)
+    data = hole_breakdown(rows)
 
-    total_over = 0
+    total_eagle_plus = 0
+    total_birdies = 0
     total_par = 0
-    total_under = 0
+    total_bogeys = 0
+    total_double_bogeys = 0
+    total_triple_plus = 0
     total_shots = 0
     total_vs_par = 0
 
     lines = [
-        "<h2>Shot Breakdown</h2>",
+        "<h2>Hole Breakdown</h2>",
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
         "<tr>"
-        "<th>Player</th>"
-        "<th>Over par holes</th>"
-        "<th>Par holes</th>"
-        "<th>Under par holes</th>"
-        "<th>Total shots</th>"
-        "<th>Total vs par</th>"
+        '<th rowspan="2">Player</th>'
+        '<th colspan="2">Under par holes</th>'
+        '<th rowspan="2">Par</th>'
+        '<th colspan="3">Over par holes</th>'
+        '<th rowspan="2">Total shots</th>'
+        '<th rowspan="2">Total vs par</th>'
+        "</tr>",
+        "<tr>"
+        "<th>Eagle+</th>"
+        "<th>Birdies</th>"
+        "<th>Bogeys</th>"
+        "<th>Double bogeys</th>"
+        "<th>Triple+</th>"
         "</tr>",
         "</thead>",
         "<tbody>",
@@ -597,29 +621,52 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
     for player in players:
         d = data[player]
 
-        total_over += d["Over par holes"]
-        total_par += d["Par holes"]
-        total_under += d["Under par holes"]
+        total_eagle_plus += d["Eagle+"]
+        total_birdies += d["Birdies"]
+        total_par += d["Par"]
+        total_bogeys += d["Bogeys"]
+        total_double_bogeys += d["Double bogeys"]
+        total_triple_plus += d["Triple+"]
         total_shots += d["Total shots"]
         total_vs_par += d["Total vs par"]
 
         lines.append(
             "<tr>"
             f"<td>{esc(player)}</td>"
-            f"<td>{d['Over par holes']}</td>"
-            f"<td>{d['Par holes']}</td>"
-            f"<td>{d['Under par holes']}</td>"
+            f"<td>{d['Eagle+']}</td>"
+            f"<td>{d['Birdies']}</td>"
+            f"<td>{d['Par']}</td>"
+            f"<td>{d['Bogeys']}</td>"
+            f"<td>{d['Double bogeys']}</td>"
+            f"<td>{d['Triple+']}</td>"
             f"<td>{d['Total shots']}</td>"
             f"<td>{score_fmt(d['Total vs par'])}</td>"
             "</tr>"
         )
 
+    under_total = total_eagle_plus + total_birdies
+    over_total = total_bogeys + total_double_bogeys + total_triple_plus
+
     lines.append(
         "<tr>"
         "<th>Total</th>"
-        f"<th>{total_over}</th>"
+        f"<th>{total_eagle_plus}</th>"
+        f"<th>{total_birdies}</th>"
         f"<th>{total_par}</th>"
-        f"<th>{total_under}</th>"
+        f"<th>{total_bogeys}</th>"
+        f"<th>{total_double_bogeys}</th>"
+        f"<th>{total_triple_plus}</th>"
+        f"<th>{total_shots}</th>"
+        f"<th>{score_fmt(total_vs_par)}</th>"
+        "</tr>"
+    )
+
+    lines.append(
+        "<tr>"
+        "<th>Grouped total</th>"
+        f'<th colspan="2">{under_total} under par holes</th>'
+        f"<th>{total_par} par holes</th>"
+        f'<th colspan="3">{over_total} over par holes</th>'
         f"<th>{total_shots}</th>"
         f"<th>{score_fmt(total_vs_par)}</th>"
         "</tr>"
