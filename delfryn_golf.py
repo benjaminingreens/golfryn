@@ -581,7 +581,7 @@ def player_average_stat(player: str, rows: list[dict]) -> str:
 """
 
 
-def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> str:
+def hole_breakdown_table(rows: list[dict], players: list[str] | None = None) -> str:
     players = players or PLAYERS
     data = hole_breakdown(rows)
 
@@ -903,7 +903,7 @@ def player_game_table(player: str, rows: list[dict]) -> str:
 def build_home_page(rows: list[dict], docs: Path) -> None:
     body = ""
     body += average_vs_par_stat(rows, rows)
-    body += shot_breakdown_table(rows)
+    body += hole_breakdown_table(rows)
 
     body += "<h2>Links</h2>"
     body += link_list([
@@ -924,7 +924,7 @@ def build_games_pages(rows: list[dict], docs: Path) -> None:
         body = (
             f'<p class="meta">{esc(first["Date"])} — {esc(first["Location"])}</p>'
             + game_par_ranking_stat(game_rows, rows, game_number)
-            + shot_breakdown_table(game_rows)
+            + hole_breakdown_table(game_rows)
             + scorecard_table(game_rows)
             + '<p><a href="index.html">Back to games</a></p>'
         )
@@ -941,7 +941,7 @@ def build_player_pages(rows: list[dict], docs: Path) -> None:
     for player in PLAYERS:
         body = (
             player_average_stat(player, rows)
-            + shot_breakdown_table(rows, [player])
+            + hole_breakdown_table(rows, [player])
             + player_game_table(player, rows)
             + '<p><a href="index.html">Back to players</a></p>'
         )
