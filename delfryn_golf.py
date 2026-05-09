@@ -192,13 +192,14 @@ HTML_START = """<!DOCTYPE html>
             font-size: 0.9em;
         }
 
+        /* In this display, up = improvement, down = worse */
         .up {
-            color: #ff6b6b;
+            color: #51cf66;
             font-weight: 700;
         }
 
         .down {
-            color: #51cf66;
+            color: #ff6b6b;
             font-weight: 700;
         }
 
@@ -326,16 +327,24 @@ def total_course_par(rows: list[dict]) -> int:
     return sum(row["Par"] for row in rows)
 
 
+def total_unique_holes(rows: list[dict]) -> int:
+    return len({(row["Game"], row["Hole"]) for row in rows})
+
+
+def total_games(rows: list[dict]) -> int:
+    return len({row["Game"] for row in rows})
+
+
 def collective_total_vs_par(rows: list[dict]) -> int:
     return sum(player_total_vs_par(rows, player) for player in PLAYERS)
 
 
-def collective_holes(rows: list[dict]) -> int:
+def collective_player_holes(rows: list[dict]) -> int:
     return sum(player_holes(rows, player) for player in PLAYERS)
 
 
 def collective_average_vs_par(rows: list[dict]) -> float:
-    holes = collective_holes(rows)
+    holes = collective_player_holes(rows)
     return collective_total_vs_par(rows) / holes if holes else 0
 
 
@@ -386,10 +395,14 @@ def previous_game_average(all_rows: list[dict], game_number: int | None = None) 
 
 
 def trend_arrow(current: float, previous: float) -> str:
-    # In golf, lower is better.
-    if current > previous:
-        return '<span class="up">▲</span>'
+    """
+    Golf score direction:
+    - current lower than previous = improvement = green up arrow
+    - current higher than previous = worse = red down arrow
+    """
     if current < previous:
+        return '<span class="up">▲</span>'
+    if current > previous:
         return '<span class="down">▼</span>'
     return '<span class="flat">■</span>'
 
@@ -419,7 +432,6 @@ def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
             "Over par holes": over,
             "Par holes": par,
             "Under par holes": under,
-            "Total holes": over + par + under,
             "Total shots": player_total_shots(rows, player),
             "Total vs par": player_total_vs_par(rows, player),
         }
@@ -476,6 +488,7 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
         '<div class="stat-label">Collective average vs par</div>',
         f'<div class="big-number">{score_fmt(average)} {arrow}</div>',
         f'<div class="small-detail">overall {score_fmt(total)} between all players</div>',
+        f'<div class="small-detail">{total_games(rows)} games · {total_unique_holes(rows)} holes</div>',
         "</div>",
     ]
 
@@ -509,6 +522,7 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
         '<div class="stat-label">Collective score vs par</div>',
         f'<div class="big-number">{score_fmt(total)} {arrow}</div>',
         f'<div class="small-detail">average {score_fmt(average)} between all players</div>',
+        f'<div class="small-detail">{total_unique_holes(game_rows)} holes</div>',
         "</div>",
     ]
 
@@ -534,7 +548,6 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
     total_over = 0
     total_par = 0
     total_under = 0
-    total_holes = 0
     total_shots = 0
     total_vs_par = 0
 
@@ -548,7 +561,6 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
         "<th>Over par holes</th>"
         "<th>Par holes</th>"
         "<th>Under par holes</th>"
-        "<th>Total holes</th>"
         "<th>Total shots</th>"
         "<th>Total vs par</th>"
         "</tr>",
@@ -562,7 +574,6 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
         total_over += d["Over par holes"]
         total_par += d["Par holes"]
         total_under += d["Under par holes"]
-        total_holes += d["Total holes"]
         total_shots += d["Total shots"]
         total_vs_par += d["Total vs par"]
 
@@ -572,7 +583,6 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
             f"<td>{d['Over par holes']}</td>"
             f"<td>{d['Par holes']}</td>"
             f"<td>{d['Under par holes']}</td>"
-            f"<td>{d['Total holes']}</td>"
             f"<td>{d['Total shots']}</td>"
             f"<td>{score_fmt(d['Total vs par'])}</td>"
             "</tr>"
@@ -584,7 +594,6 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
         f"<th>{total_over}</th>"
         f"<th>{total_par}</th>"
         f"<th>{total_under}</th>"
-        f"<th>{total_holes}</th>"
         f"<th>{total_shots}</th>"
         f"<th>{score_fmt(total_vs_par)}</th>"
         "</tr>"
