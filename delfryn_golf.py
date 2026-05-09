@@ -89,9 +89,22 @@ HTML_START = """<!DOCTYPE html>
             margin: 0 0 0.45em 0;
         }
 
-        h1 { font-size: 2em; font-weight: 700; }
-        h2 { font-size: 1.5em; font-weight: 700; margin-top: 1.2em; }
-        h3 { font-size: 1.25em; font-weight: 600; margin-top: 1em; }
+        h1 {
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-top: 1.2em;
+        }
+
+        h3 {
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-top: 1em;
+        }
 
         p {
             margin: 0 0 0.45em 0;
@@ -113,21 +126,6 @@ HTML_START = """<!DOCTYPE html>
             content: "* ";
         }
 
-        ol.ranking-list {
-            margin: 0.4em 0 1em 0;
-            padding-left: 1.6em;
-        }
-
-        ol.ranking-list li {
-            text-indent: 0;
-            padding-left: 0;
-            margin: 0.25em 0;
-        }
-
-        ol.ranking-list li::before {
-            content: none;
-        }
-
         a {
             color: white;
             text-decoration: underline;
@@ -143,33 +141,9 @@ HTML_START = """<!DOCTYPE html>
             margin: 0.9em 0;
         }
 
-        .table-scroll {
-            width: 100%;
-            overflow-x: auto;
-            margin: 0.8em 0 1.2em 0;
-        }
-
-        table {
-            border-collapse: collapse;
-            font-size: 0.9em;
-            min-width: max-content;
-        }
-
-        th, td {
-            border: 1px solid #444;
-            padding: 0.35em 0.45em;
-            text-align: left;
-            vertical-align: top;
-            white-space: nowrap;
-        }
-
-        th {
-            font-weight: 700;
-        }
-
         .stat {
             border: 1px solid #444;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 0.8em 1em;
             margin: 0.8em 0 1em 0;
         }
@@ -178,6 +152,33 @@ HTML_START = """<!DOCTYPE html>
             font-size: 0.85em;
             color: #ccc;
             margin-bottom: 0.2em;
+        }
+
+        .ranking-table {
+            display: grid;
+            grid-template-columns: 2ch minmax(5ch, 1fr) auto auto;
+            column-gap: 0.7em;
+            row-gap: 0.25em;
+            align-items: baseline;
+            margin: 0.4em 0 1em 0;
+        }
+
+        .rank-no {
+            color: #ccc;
+            text-align: right;
+        }
+
+        .rank-player {
+            font-weight: 700;
+        }
+
+        .rank-score {
+            text-align: right;
+        }
+
+        .rank-detail {
+            color: #ccc;
+            font-size: 0.9em;
         }
 
         .big-number {
@@ -210,6 +211,30 @@ HTML_START = """<!DOCTYPE html>
             color: #ccc;
             font-size: 0.9em;
         }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            font-size: 0.9em;
+            min-width: max-content;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 0.35em 0.45em;
+            text-align: left;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        th {
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -238,6 +263,12 @@ def read_rows(filename: str = CSV_FILE) -> list[dict]:
 
     with open(filename, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
+
+        required_columns = {"Date", "Location", "Game", "Hole", "Par", "Starter", *PLAYERS}
+        missing = required_columns - set(reader.fieldnames or [])
+
+        if missing:
+            raise ValueError(f"Missing CSV columns: {', '.join(sorted(missing))}")
 
         for row in reader:
             clean = {
@@ -283,7 +314,7 @@ def player_average_vs_par(rows: list[dict], player: str) -> float:
     return player_total_vs_par(rows, player) / holes if holes else 0
 
 
-def player_total_strokes(rows: list[dict], player: str) -> int:
+def player_total_shots(rows: list[dict], player: str) -> int:
     return sum(
         strokes(row[player], row["Par"])
         for row in rows
@@ -308,8 +339,8 @@ def collective_average_vs_par(rows: list[dict]) -> float:
     return collective_total_vs_par(rows) / holes if holes else 0
 
 
-def collective_total_strokes(rows: list[dict]) -> int:
-    return sum(player_total_strokes(rows, player) for player in PLAYERS)
+def collective_total_shots(rows: list[dict]) -> int:
+    return sum(player_total_shots(rows, player) for player in PLAYERS)
 
 
 def ranking_by_average(rows: list[dict]) -> list[str]:
@@ -318,7 +349,7 @@ def ranking_by_average(rows: list[dict]) -> list[str]:
         key=lambda player: (
             player_average_vs_par(rows, player),
             player_total_vs_par(rows, player),
-        )
+        ),
     )
 
 
@@ -328,7 +359,7 @@ def ranking_by_total(rows: list[dict]) -> list[str]:
         key=lambda player: (
             player_total_vs_par(rows, player),
             player_average_vs_par(rows, player),
-        )
+        ),
     )
 
 
@@ -385,11 +416,12 @@ def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
                 under += 1
 
         out[player] = {
-            "Over par": over,
-            "Par": par,
-            "Under par": under,
+            "Over par holes": over,
+            "Par holes": par,
+            "Under par holes": under,
             "Total holes": over + par + under,
-            "Total shots": player_total_strokes(rows, player),
+            "Total shots": player_total_shots(rows, player),
+            "Total vs par": player_total_vs_par(rows, player),
         }
 
     return out
@@ -428,19 +460,19 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
         "<h2>Average vs Par</h2>",
         '<div class="stat">',
         '<div class="stat-label">Ranking</div>',
-        '<ol class="ranking-list">',
+        '<div class="ranking-table">',
     ]
 
-    for player in ranking:
-        lines.append(
-            f"<li><strong>{esc(player)}</strong>: "
-            f"{score_fmt(player_average_vs_par(rows, player))} "
-            f'<span class="small-detail">({score_fmt(player_total_vs_par(rows, player))} total)</span>'
-            "</li>"
-        )
+    for i, player in enumerate(ranking, start=1):
+        lines += [
+            f'<div class="rank-no">{i}.</div>',
+            f'<div class="rank-player">{esc(player)}</div>',
+            f'<div class="rank-score">{score_fmt(player_average_vs_par(rows, player))}</div>',
+            f'<div class="rank-detail">({score_fmt(player_total_vs_par(rows, player))} total)</div>',
+        ]
 
     lines += [
-        "</ol>",
+        "</div>",
         '<div class="stat-label">Collective average vs par</div>',
         f'<div class="big-number">{score_fmt(average)} {arrow}</div>',
         f'<div class="small-detail">overall {score_fmt(total)} between all players</div>',
@@ -461,19 +493,19 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
         "<h2>Par Ranking</h2>",
         '<div class="stat">',
         '<div class="stat-label">Ranking</div>',
-        '<ol class="ranking-list">',
+        '<div class="ranking-table">',
     ]
 
-    for player in ranking:
-        lines.append(
-            f"<li><strong>{esc(player)}</strong>: "
-            f"{score_fmt(player_total_vs_par(game_rows, player))} "
-            f'<span class="small-detail">({score_fmt(player_average_vs_par(game_rows, player))} average)</span>'
-            "</li>"
-        )
+    for i, player in enumerate(ranking, start=1):
+        lines += [
+            f'<div class="rank-no">{i}.</div>',
+            f'<div class="rank-player">{esc(player)}</div>',
+            f'<div class="rank-score">{score_fmt(player_total_vs_par(game_rows, player))}</div>',
+            f'<div class="rank-detail">({score_fmt(player_average_vs_par(game_rows, player))} average)</div>',
+        ]
 
     lines += [
-        "</ol>",
+        "</div>",
         '<div class="stat-label">Collective score vs par</div>',
         f'<div class="big-number">{score_fmt(total)} {arrow}</div>',
         f'<div class="small-detail">average {score_fmt(average)} between all players</div>',
@@ -499,12 +531,27 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
     players = players or PLAYERS
     data = shot_breakdown(rows)
 
+    total_over = 0
+    total_par = 0
+    total_under = 0
+    total_holes = 0
+    total_shots = 0
+    total_vs_par = 0
+
     lines = [
         "<h2>Shot Breakdown</h2>",
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Player</th><th>Over par holes</th><th>Par holes</th><th>Under par holes</th><th>Total holes</th><th>Total shots</th></tr>",
+        "<tr>"
+        "<th>Player</th>"
+        "<th>Over par holes</th>"
+        "<th>Par holes</th>"
+        "<th>Under par holes</th>"
+        "<th>Total holes</th>"
+        "<th>Total shots</th>"
+        "<th>Total vs par</th>"
+        "</tr>",
         "</thead>",
         "<tbody>",
     ]
@@ -512,16 +559,36 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
     for player in players:
         d = data[player]
 
+        total_over += d["Over par holes"]
+        total_par += d["Par holes"]
+        total_under += d["Under par holes"]
+        total_holes += d["Total holes"]
+        total_shots += d["Total shots"]
+        total_vs_par += d["Total vs par"]
+
         lines.append(
             "<tr>"
             f"<td>{esc(player)}</td>"
-            f"<td>{d['Over par']}</td>"
-            f"<td>{d['Par']}</td>"
-            f"<td>{d['Under par']}</td>"
+            f"<td>{d['Over par holes']}</td>"
+            f"<td>{d['Par holes']}</td>"
+            f"<td>{d['Under par holes']}</td>"
             f"<td>{d['Total holes']}</td>"
             f"<td>{d['Total shots']}</td>"
+            f"<td>{score_fmt(d['Total vs par'])}</td>"
             "</tr>"
         )
+
+    lines.append(
+        "<tr>"
+        "<th>Total</th>"
+        f"<th>{total_over}</th>"
+        f"<th>{total_par}</th>"
+        f"<th>{total_under}</th>"
+        f"<th>{total_holes}</th>"
+        f"<th>{total_shots}</th>"
+        f"<th>{score_fmt(total_vs_par)}</th>"
+        "</tr>"
+    )
 
     lines += ["</tbody>", "</table>", "</div>"]
     return "\n".join(lines)
@@ -535,7 +602,14 @@ def scorecard_table(rows: list[dict]) -> str:
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Hole</th><th>Par</th><th>Tom</th><th>Jonny</th><th>Ben</th><th>Starter</th></tr>",
+        "<tr>"
+        "<th>Hole</th>"
+        "<th>Par</th>"
+        "<th>Tom</th>"
+        "<th>Jonny</th>"
+        "<th>Ben</th>"
+        "<th>Starter</th>"
+        "</tr>",
         "</thead>",
         "<tbody>",
     ]
@@ -567,9 +641,9 @@ def scorecard_table(rows: list[dict]) -> str:
         "<tr>"
         "<th>Total shots</th>"
         "<th></th>"
-        f"<th>{player_total_strokes(rows, 'Tom')}</th>"
-        f"<th>{player_total_strokes(rows, 'Jonny')}</th>"
-        f"<th>{player_total_strokes(rows, 'Ben')}</th>"
+        f"<th>{player_total_shots(rows, 'Tom')}</th>"
+        f"<th>{player_total_shots(rows, 'Jonny')}</th>"
+        f"<th>{player_total_shots(rows, 'Ben')}</th>"
         "<th></th>"
         "</tr>"
     )
@@ -583,7 +657,17 @@ def full_data_table(rows: list[dict]) -> str:
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Date</th><th>Location</th><th>Game</th><th>Hole</th><th>Par</th><th>Tom</th><th>Jonny</th><th>Ben</th><th>Starter</th></tr>",
+        "<tr>"
+        "<th>Date</th>"
+        "<th>Location</th>"
+        "<th>Game</th>"
+        "<th>Hole</th>"
+        "<th>Par</th>"
+        "<th>Tom</th>"
+        "<th>Jonny</th>"
+        "<th>Ben</th>"
+        "<th>Starter</th>"
+        "</tr>",
         "</thead>",
         "<tbody>",
     ]
@@ -615,7 +699,14 @@ def player_game_table(player: str, rows: list[dict]) -> str:
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Game</th><th>Date</th><th>Location</th><th>Total vs par</th><th>Average vs par</th><th>Total shots</th></tr>",
+        "<tr>"
+        "<th>Game</th>"
+        "<th>Date</th>"
+        "<th>Location</th>"
+        "<th>Total vs par</th>"
+        "<th>Average vs par</th>"
+        "<th>Total shots</th>"
+        "</tr>",
         "</thead>",
         "<tbody>",
     ]
@@ -630,7 +721,7 @@ def player_game_table(player: str, rows: list[dict]) -> str:
             f"<td>{esc(first['Location'])}</td>"
             f"<td>{score_fmt(player_total_vs_par(game_rows, player))}</td>"
             f"<td>{score_fmt(player_average_vs_par(game_rows, player))}</td>"
-            f"<td>{player_total_strokes(game_rows, player)}</td>"
+            f"<td>{player_total_shots(game_rows, player)}</td>"
             "</tr>"
         )
 
@@ -661,6 +752,7 @@ def build_games_pages(rows: list[dict], docs: Path) -> None:
         first = game_rows[0]
         label = f"Game {game_number}: {first['Date']}, {first['Location']}"
         href = f"game_{game_number}.html"
+
         index_items.append((href, label))
 
         body = (

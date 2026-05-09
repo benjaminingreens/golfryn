@@ -71,9 +71,22 @@
             margin: 0 0 0.45em 0;
         }
 
-        h1 { font-size: 2em; font-weight: 700; }
-        h2 { font-size: 1.5em; font-weight: 700; margin-top: 1.2em; }
-        h3 { font-size: 1.25em; font-weight: 600; margin-top: 1em; }
+        h1 {
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-top: 1.2em;
+        }
+
+        h3 {
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-top: 1em;
+        }
 
         p {
             margin: 0 0 0.45em 0;
@@ -95,21 +108,6 @@
             content: "* ";
         }
 
-        ol.ranking-list {
-            margin: 0.4em 0 1em 0;
-            padding-left: 1.6em;
-        }
-
-        ol.ranking-list li {
-            text-indent: 0;
-            padding-left: 0;
-            margin: 0.25em 0;
-        }
-
-        ol.ranking-list li::before {
-            content: none;
-        }
-
         a {
             color: white;
             text-decoration: underline;
@@ -125,33 +123,9 @@
             margin: 0.9em 0;
         }
 
-        .table-scroll {
-            width: 100%;
-            overflow-x: auto;
-            margin: 0.8em 0 1.2em 0;
-        }
-
-        table {
-            border-collapse: collapse;
-            font-size: 0.9em;
-            min-width: max-content;
-        }
-
-        th, td {
-            border: 1px solid #444;
-            padding: 0.35em 0.45em;
-            text-align: left;
-            vertical-align: top;
-            white-space: nowrap;
-        }
-
-        th {
-            font-weight: 700;
-        }
-
         .stat {
             border: 1px solid #444;
-            border-radius: 10px;
+            border-radius: 0;
             padding: 0.8em 1em;
             margin: 0.8em 0 1em 0;
         }
@@ -160,6 +134,33 @@
             font-size: 0.85em;
             color: #ccc;
             margin-bottom: 0.2em;
+        }
+
+        .ranking-table {
+            display: grid;
+            grid-template-columns: 2ch minmax(5ch, 1fr) auto auto;
+            column-gap: 0.7em;
+            row-gap: 0.25em;
+            align-items: baseline;
+            margin: 0.4em 0 1em 0;
+        }
+
+        .rank-no {
+            color: #ccc;
+            text-align: right;
+        }
+
+        .rank-player {
+            font-weight: 700;
+        }
+
+        .rank-score {
+            text-align: right;
+        }
+
+        .rank-detail {
+            color: #ccc;
+            font-size: 0.9em;
         }
 
         .big-number {
@@ -192,6 +193,30 @@
             color: #ccc;
             font-size: 0.9em;
         }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0.8em 0 1.2em 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            font-size: 0.9em;
+            min-width: max-content;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 0.35em 0.45em;
+            text-align: left;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        th {
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -200,11 +225,20 @@
 <h2>Average vs Par</h2>
 <div class="stat">
 <div class="stat-label">Ranking</div>
-<ol class="ranking-list">
-<li><strong>Tom</strong>: 0.00 <span class="small-detail">(0 total)</span></li>
-<li><strong>Ben</strong>: +0.11 <span class="small-detail">(+2 total)</span></li>
-<li><strong>Jonny</strong>: +0.17 <span class="small-detail">(+3 total)</span></li>
-</ol>
+<div class="ranking-table">
+<div class="rank-no">1.</div>
+<div class="rank-player">Tom</div>
+<div class="rank-score">0.00</div>
+<div class="rank-detail">(0 total)</div>
+<div class="rank-no">2.</div>
+<div class="rank-player">Ben</div>
+<div class="rank-score">+0.11</div>
+<div class="rank-detail">(+2 total)</div>
+<div class="rank-no">3.</div>
+<div class="rank-player">Jonny</div>
+<div class="rank-score">+0.17</div>
+<div class="rank-detail">(+3 total)</div>
+</div>
 <div class="stat-label">Collective average vs par</div>
 <div class="big-number">+0.09 <span class="up">▲</span></div>
 <div class="small-detail">overall +5 between all players</div>
@@ -212,12 +246,13 @@
 <div class="table-scroll">
 <table>
 <thead>
-<tr><th>Player</th><th>Over par holes</th><th>Par holes</th><th>Under par holes</th><th>Total holes</th><th>Total shots</th></tr>
+<tr><th>Player</th><th>Over par holes</th><th>Par holes</th><th>Under par holes</th><th>Total holes</th><th>Total shots</th><th>Total vs par</th></tr>
 </thead>
 <tbody>
-<tr><td>Tom</td><td>3</td><td>8</td><td>7</td><td>18</td><td>57</td></tr>
-<tr><td>Jonny</td><td>6</td><td>5</td><td>7</td><td>18</td><td>60</td></tr>
-<tr><td>Ben</td><td>5</td><td>7</td><td>6</td><td>18</td><td>59</td></tr>
+<tr><td>Tom</td><td>3</td><td>8</td><td>7</td><td>18</td><td>57</td><td>0</td></tr>
+<tr><td>Jonny</td><td>6</td><td>5</td><td>7</td><td>18</td><td>60</td><td>+3</td></tr>
+<tr><td>Ben</td><td>5</td><td>7</td><td>6</td><td>18</td><td>59</td><td>+2</td></tr>
+<tr><th>Total</th><th>14</th><th>20</th><th>20</th><th>54</th><th>176</th><th>+5</th></tr>
 </tbody>
 </table>
 </div><h2>Links</h2><ul>
