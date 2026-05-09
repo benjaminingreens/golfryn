@@ -193,12 +193,12 @@ HTML_START = """<!DOCTYPE html>
         }
 
         .up {
-            color: #51cf66;
+            color: #ff6b6b;
             font-weight: 700;
         }
 
         .down {
-            color: #ff6b6b;
+            color: #51cf66;
             font-weight: 700;
         }
 
@@ -260,9 +260,9 @@ def score_fmt(score: float | int) -> str:
 
 def trend_arrow(current: float, previous: float) -> str:
     """
-    Direction only:
-    current higher than previous = green up
-    current lower than previous = red down
+    Direction:
+    current higher than previous = red up arrow
+    current lower than previous = green down arrow
     same = flat
     """
     if current > previous:
