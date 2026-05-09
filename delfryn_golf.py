@@ -192,7 +192,6 @@ HTML_START = """<!DOCTYPE html>
             font-size: 0.9em;
         }
 
-        /* In this display, up = improvement, down = worse */
         .up {
             color: #51cf66;
             font-weight: 700;
@@ -257,6 +256,24 @@ def score_fmt(score: float | int) -> str:
         return f"+{score:.2f}" if score > 0 else f"{score:.2f}"
 
     return f"+{score}" if score > 0 else str(score)
+
+
+def trend_arrow(current: float, previous: float) -> str:
+    """
+    Direction only:
+    current higher than previous = green up
+    current lower than previous = red down
+    same = flat
+    """
+    if current > previous:
+        return '<span class="up">▲</span>'
+    if current < previous:
+        return '<span class="down">▼</span>'
+    return '<span class="flat">■</span>'
+
+
+def avg_fmt(current: float, previous: float) -> str:
+    return f"{score_fmt(current)} {trend_arrow(current, previous)}"
 
 
 def read_rows(filename: str = CSV_FILE) -> list[dict]:
@@ -372,39 +389,57 @@ def ranking_by_total(rows: list[dict]) -> list[str]:
     )
 
 
-def previous_game_average(all_rows: list[dict], game_number: int | None = None) -> float:
+def previous_game_rows(all_rows: list[dict], game_number: int) -> list[dict]:
+    games = group_by_game(all_rows)
+    previous_games = [g for g in sorted(games) if g < game_number]
+
+    if not previous_games:
+        return []
+
+    return games[previous_games[-1]]
+
+
+def latest_game_number(rows: list[dict]) -> int | None:
+    games = group_by_game(rows)
+    return max(games) if games else None
+
+
+def previous_collective_average(all_rows: list[dict], game_number: int | None = None) -> float:
     games = group_by_game(all_rows)
 
     if not games:
         return 0
 
     if game_number is None:
-        game_numbers = sorted(games)
+        latest = latest_game_number(all_rows)
 
-        if len(game_numbers) < 2:
+        if latest is None:
             return 0
 
-        return collective_average_vs_par(games[game_numbers[-2]])
+        prev_rows = previous_game_rows(all_rows, latest)
+        return collective_average_vs_par(prev_rows) if prev_rows else 0
 
-    previous_games = [g for g in sorted(games) if g < game_number]
+    prev_rows = previous_game_rows(all_rows, game_number)
+    return collective_average_vs_par(prev_rows) if prev_rows else 0
 
-    if not previous_games:
+
+def previous_player_average(all_rows: list[dict], player: str, game_number: int | None = None) -> float:
+    games = group_by_game(all_rows)
+
+    if not games:
         return 0
 
-    return collective_average_vs_par(games[previous_games[-1]])
+    if game_number is None:
+        latest = latest_game_number(all_rows)
 
+        if latest is None:
+            return 0
 
-def trend_arrow(current: float, previous: float) -> str:
-    """
-    Golf score direction:
-    - current lower than previous = improvement = green up arrow
-    - current higher than previous = worse = red down arrow
-    """
-    if current < previous:
-        return '<span class="up">▲</span>'
-    if current > previous:
-        return '<span class="down">▼</span>'
-    return '<span class="flat">■</span>'
+        prev_rows = previous_game_rows(all_rows, latest)
+        return player_average_vs_par(prev_rows, player) if prev_rows else 0
+
+    prev_rows = previous_game_rows(all_rows, game_number)
+    return player_average_vs_par(prev_rows, player) if prev_rows else 0
 
 
 def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
@@ -462,11 +497,8 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     ranking = ranking_by_average(rows)
     total = collective_total_vs_par(rows)
     average = collective_average_vs_par(rows)
-
-    games = group_by_game(all_rows)
-    latest_game = max(games) if games else None
-    previous = previous_game_average(all_rows, latest_game)
-    arrow = trend_arrow(average, previous)
+    previous = previous_collective_average(all_rows)
+    average_with_arrow = avg_fmt(average, previous)
 
     lines = [
         "<h2>Average vs Par</h2>",
@@ -476,17 +508,20 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     ]
 
     for i, player in enumerate(ranking, start=1):
+        current_avg = player_average_vs_par(rows, player)
+        prev_avg = previous_player_average(all_rows, player)
+
         lines += [
             f'<div class="rank-no">{i}.</div>',
             f'<div class="rank-player">{esc(player)}</div>',
-            f'<div class="rank-score">{score_fmt(player_average_vs_par(rows, player))}</div>',
+            f'<div class="rank-score">{avg_fmt(current_avg, prev_avg)}</div>',
             f'<div class="rank-detail">({score_fmt(player_total_vs_par(rows, player))} total)</div>',
         ]
 
     lines += [
         "</div>",
         '<div class="stat-label">Collective average vs par</div>',
-        f'<div class="big-number">{score_fmt(average)} {arrow}</div>',
+        f'<div class="big-number">{average_with_arrow}</div>',
         f'<div class="small-detail">overall {score_fmt(total)} between all players</div>',
         f'<div class="small-detail">{total_games(rows)} games · {total_unique_holes(rows)} holes</div>',
         "</div>",
@@ -499,8 +534,7 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
     ranking = ranking_by_total(game_rows)
     total = collective_total_vs_par(game_rows)
     average = collective_average_vs_par(game_rows)
-    previous = previous_game_average(all_rows, game_number)
-    arrow = trend_arrow(average, previous)
+    previous = previous_collective_average(all_rows, game_number)
 
     lines = [
         "<h2>Par Ranking</h2>",
@@ -510,18 +544,21 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
     ]
 
     for i, player in enumerate(ranking, start=1):
+        current_avg = player_average_vs_par(game_rows, player)
+        prev_avg = previous_player_average(all_rows, player, game_number)
+
         lines += [
             f'<div class="rank-no">{i}.</div>',
             f'<div class="rank-player">{esc(player)}</div>',
             f'<div class="rank-score">{score_fmt(player_total_vs_par(game_rows, player))}</div>',
-            f'<div class="rank-detail">({score_fmt(player_average_vs_par(game_rows, player))} average)</div>',
+            f'<div class="rank-detail">({avg_fmt(current_avg, prev_avg)} average)</div>',
         ]
 
     lines += [
         "</div>",
         '<div class="stat-label">Collective score vs par</div>',
-        f'<div class="big-number">{score_fmt(total)} {arrow}</div>',
-        f'<div class="small-detail">average {score_fmt(average)} between all players</div>',
+        f'<div class="big-number">{score_fmt(total)}</div>',
+        f'<div class="small-detail">average {avg_fmt(average, previous)} between all players</div>',
         f'<div class="small-detail">{total_unique_holes(game_rows)} holes</div>',
         "</div>",
     ]
@@ -530,13 +567,17 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
 
 
 def player_average_stat(player: str, rows: list[dict]) -> str:
+    current_avg = player_average_vs_par(rows, player)
+    previous_avg = previous_player_average(rows, player)
+
     return f"""
 <h2>Average vs Par</h2>
 
 <div class="stat">
     <div class="stat-label">{esc(player)}</div>
-    <div class="big-number">{score_fmt(player_average_vs_par(rows, player))}</div>
+    <div class="big-number">{avg_fmt(current_avg, previous_avg)}</div>
     <div class="small-detail">overall {score_fmt(player_total_vs_par(rows, player))}</div>
+    <div class="small-detail">{total_games(rows)} games · {total_unique_holes(rows)} holes</div>
 </div>
 """
 
@@ -722,6 +763,8 @@ def player_game_table(player: str, rows: list[dict]) -> str:
 
     for game_number, game_rows in games.items():
         first = game_rows[0]
+        current_avg = player_average_vs_par(game_rows, player)
+        prev_avg = previous_player_average(rows, player, game_number)
 
         lines.append(
             "<tr>"
@@ -729,7 +772,7 @@ def player_game_table(player: str, rows: list[dict]) -> str:
             f"<td>{esc(first['Date'])}</td>"
             f"<td>{esc(first['Location'])}</td>"
             f"<td>{score_fmt(player_total_vs_par(game_rows, player))}</td>"
-            f"<td>{score_fmt(player_average_vs_par(game_rows, player))}</td>"
+            f"<td>{avg_fmt(current_avg, prev_avg)}</td>"
             f"<td>{player_total_shots(game_rows, player)}</td>"
             "</tr>"
         )
