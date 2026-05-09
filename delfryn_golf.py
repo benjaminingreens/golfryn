@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import csv
 import html
+import posixpath
 import shutil
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 
@@ -141,6 +143,34 @@ HTML_START = """<!DOCTYPE html>
             margin: 0.9em 0;
         }
 
+        .season-nav-wrap {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0 0 1em 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.6em;
+        }
+
+        .season-nav {
+            display: flex;
+            gap: 0.8em;
+            white-space: nowrap;
+            min-width: max-content;
+            font-size: 0.9em;
+        }
+
+        .season-nav a,
+        .season-current {
+            border: 1px solid #444;
+            padding: 0.25em 0.55em;
+            text-decoration: none;
+        }
+
+        .season-current {
+            font-weight: 700;
+            background-color: #1a1a1a;
+        }
+
         .stat {
             border: 1px solid #444;
             border-radius: 0;
@@ -263,7 +293,6 @@ def esc(value: object) -> str:
 def score_fmt(score: float | int) -> str:
     if isinstance(score, float):
         return f"+{score:.2f}" if score > 0 else f"{score:.2f}"
-
     return f"+{score}" if score > 0 else str(score)
 
 
@@ -313,6 +342,101 @@ def read_rows(filename: str = CSV_FILE) -> list[dict]:
             rows.append(clean)
 
     return rows
+
+
+def row_year(row: dict) -> int:
+    return int(str(row["Date"])[:4])
+
+
+def available_years(rows: list[dict]) -> list[int]:
+    return sorted({row_year(row) for row in rows}, reverse=True)
+
+
+def current_season_year(rows: list[dict]) -> int:
+    now_year = datetime.now().year
+    years = available_years(rows)
+
+    if now_year in years:
+        return now_year
+
+    return years[0] if years else now_year
+
+
+def rows_for_year(rows: list[dict], year: int) -> list[dict]:
+    return [row for row in rows if row_year(row) == year]
+
+
+def scope_rows(rows: list[dict], year: int | None) -> list[dict]:
+    if year is None:
+        return rows
+    return rows_for_year(rows, year)
+
+
+def scoped_path(page_path: str, year: int | None) -> str:
+    if year is None:
+        return page_path
+    return f"season_{year}/{page_path}"
+
+
+def rel_link(current_page: str, target_page: str) -> str:
+    start = posixpath.dirname(current_page) or "."
+    return posixpath.relpath(target_page, start=start)
+
+
+def season_nav(
+    *,
+    current_page: str,
+    page_path: str,
+    all_rows: list[dict],
+    selected_year: int | None,
+) -> str:
+    years = available_years(all_rows)
+    current_year = current_season_year(all_rows)
+
+    items: list[str] = []
+
+    all_time_target = scoped_path(page_path, None)
+    current_target = scoped_path(page_path, current_year)
+
+    if selected_year is None:
+        items.append('<span class="season-current">All time</span>')
+    else:
+        items.append(f'<a href="{esc(rel_link(current_page, all_time_target))}">All time</a>')
+
+    current_label = f"Current season ({current_year})"
+
+    if selected_year == current_year:
+        items.append(f'<span class="season-current">{esc(current_label)}</span>')
+    else:
+        items.append(f'<a href="{esc(rel_link(current_page, current_target))}">{esc(current_label)}</a>')
+
+    for year in years:
+        if year == current_year:
+            continue
+
+        label = str(year)
+        target = scoped_path(page_path, year)
+
+        if selected_year == year:
+            items.append(f'<span class="season-current">{esc(label)}</span>')
+        else:
+            items.append(f'<a href="{esc(rel_link(current_page, target))}">{esc(label)}</a>')
+
+    return (
+        '<div class="season-nav-wrap">'
+        '<div class="season-nav">'
+        + "\n".join(items)
+        + "</div></div>"
+    )
+
+
+def page(title: str, body: str, nav_html: str = "") -> str:
+    return HTML_START + f"<h1>{esc(title)}</h1>\n" + nav_html + body + HTML_END
+
+
+def write(path: Path, html_text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html_text, encoding="utf-8")
 
 
 def group_by_game(rows: list[dict]) -> dict[int, list[dict]]:
@@ -483,15 +607,6 @@ def hole_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
     return out
 
 
-def page(title: str, body: str) -> str:
-    return HTML_START + f"<h1>{esc(title)}</h1>\n" + body + HTML_END
-
-
-def write(path: Path, html_text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(html_text, encoding="utf-8")
-
-
 def link_list(items: list[tuple[str, str]]) -> str:
     lines = ["<ul>"]
 
@@ -502,11 +617,15 @@ def link_list(items: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
+def scoped_link(current_page: str, target_page_path: str, selected_year: int | None) -> str:
+    return rel_link(current_page, scoped_path(target_page_path, selected_year))
+
+
+def average_vs_par_stat(rows: list[dict], comparison_rows: list[dict]) -> str:
     ranking = ranking_by_average(rows)
     total = collective_total_vs_par(rows)
     average = collective_average_vs_par(rows)
-    previous = previous_collective_average(all_rows)
+    previous = previous_collective_average(comparison_rows)
 
     lines = [
         "<h2>Average vs Par</h2>",
@@ -517,7 +636,7 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
 
     for i, player in enumerate(ranking, start=1):
         current_avg = player_average_vs_par(rows, player)
-        prev_avg = previous_player_average(all_rows, player)
+        prev_avg = previous_player_average(comparison_rows, player)
 
         lines += [
             f'<div class="rank-no">{i}.</div>',
@@ -538,11 +657,11 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_number: int) -> str:
+def game_par_ranking_stat(game_rows: list[dict], comparison_rows: list[dict], game_number: int) -> str:
     ranking = ranking_by_total(game_rows)
     total = collective_total_vs_par(game_rows)
     average = collective_average_vs_par(game_rows)
-    previous = previous_collective_average(all_rows, game_number)
+    previous = previous_collective_average(comparison_rows, game_number)
 
     lines = [
         "<h2>Par Ranking</h2>",
@@ -553,7 +672,7 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
 
     for i, player in enumerate(ranking, start=1):
         current_avg = player_average_vs_par(game_rows, player)
-        prev_avg = previous_player_average(all_rows, player, game_number)
+        prev_avg = previous_player_average(comparison_rows, player, game_number)
 
         lines += [
             f'<div class="rank-no">{i}.</div>',
@@ -574,9 +693,9 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
     return "\n".join(lines)
 
 
-def player_average_stat(player: str, rows: list[dict]) -> str:
+def player_average_stat(player: str, rows: list[dict], comparison_rows: list[dict]) -> str:
     current_avg = player_average_vs_par(rows, player)
-    previous_avg = previous_player_average(rows, player)
+    previous_avg = previous_player_average(comparison_rows, player)
 
     return f"""
 <h2>Average vs Par</h2>
@@ -787,7 +906,7 @@ def full_data_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def games_portal_table(rows: list[dict]) -> str:
+def games_portal_table(rows: list[dict], comparison_rows: list[dict], current_page: str) -> str:
     games = group_by_game(rows)
 
     lines = [
@@ -814,11 +933,12 @@ def games_portal_table(rows: list[dict]) -> str:
         ranking = ranking_by_total(game_rows)
         winner = ranking[0]
         avg = collective_average_vs_par(game_rows)
-        prev = previous_collective_average(rows, game_number)
+        prev = previous_collective_average(comparison_rows, game_number)
+        game_link = rel_link(current_page, f"games/game_{game_number}.html")
 
         lines.append(
             "<tr>"
-            f'<td><a href="game_{game_number}.html">Game {game_number}</a></td>'
+            f'<td><a href="{esc(game_link)}">Game {game_number}</a></td>'
             f"<td>{esc(first['Date'])}</td>"
             f"<td>{esc(first['Location'])}</td>"
             f"<td>{esc(winner)}</td>"
@@ -833,7 +953,7 @@ def games_portal_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def players_portal_table(rows: list[dict]) -> str:
+def players_portal_table(rows: list[dict], comparison_rows: list[dict], current_page: str, selected_year: int | None) -> str:
     players = ranking_by_average(rows)
 
     lines = [
@@ -856,12 +976,14 @@ def players_portal_table(rows: list[dict]) -> str:
 
     for i, player in enumerate(players, start=1):
         avg = player_average_vs_par(rows, player)
-        prev = previous_player_average(rows, player)
+        prev = previous_player_average(comparison_rows, player)
+        player_page = scoped_path(f"players/{player.lower()}.html", selected_year)
+        player_link = rel_link(current_page, player_page)
 
         lines.append(
             "<tr>"
             f"<td>{i}</td>"
-            f'<td><a href="{player.lower()}.html">{esc(player)}</a></td>'
+            f'<td><a href="{esc(player_link)}">{esc(player)}</a></td>'
             f"<td>{avg_fmt(avg, prev)}</td>"
             f"<td>{score_fmt(player_total_vs_par(rows, player))}</td>"
             f"<td>{player_total_shots(rows, player)}</td>"
@@ -874,109 +996,134 @@ def players_portal_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def player_game_table(player: str, rows: list[dict]) -> str:
-    games = group_by_game(rows)
+def build_home_page(all_rows: list[dict], docs: Path, selected_year: int | None = None) -> None:
+    page_path = "index.html"
+    current_page = scoped_path(page_path, selected_year)
+    rows = scope_rows(all_rows, selected_year)
 
-    lines = [
-        "<h2>Games</h2>",
-        '<div class="table-scroll">',
-        "<table>",
-        "<thead>",
-        "<tr>"
-        "<th>Game</th>"
-        "<th>Date</th>"
-        "<th>Location</th>"
-        "<th>Total vs par</th>"
-        "<th>Average vs par</th>"
-        "<th>Total shots</th>"
-        "</tr>",
-        "</thead>",
-        "<tbody>",
-    ]
+    nav = season_nav(
+        current_page=current_page,
+        page_path=page_path,
+        all_rows=all_rows,
+        selected_year=selected_year,
+    )
 
-    for game_number, game_rows in games.items():
-        first = game_rows[0]
-        current_avg = player_average_vs_par(game_rows, player)
-        prev_avg = previous_player_average(rows, player, game_number)
-
-        lines.append(
-            "<tr>"
-            f'<td><a href="../games/game_{game_number}.html">Game {game_number}</a></td>'
-            f"<td>{esc(first['Date'])}</td>"
-            f"<td>{esc(first['Location'])}</td>"
-            f"<td>{score_fmt(player_total_vs_par(game_rows, player))}</td>"
-            f"<td>{avg_fmt(current_avg, prev_avg)}</td>"
-            f"<td>{player_total_shots(game_rows, player)}</td>"
-            "</tr>"
-        )
-
-    lines += ["</tbody>", "</table>", "</div>"]
-    return "\n".join(lines)
-
-
-def build_home_page(rows: list[dict], docs: Path) -> None:
     body = ""
     body += average_vs_par_stat(rows, rows)
     body += hole_breakdown_table(rows)
 
     body += "<h2>Links</h2>"
     body += link_list([
-        ("games/index.html", "List of games"),
-        ("players/index.html", "List of players"),
-        ("data.html", "Underlying data"),
+        (esc(scoped_link(current_page, "games/index.html", selected_year)), "List of games"),
+        (esc(scoped_link(current_page, "players/index.html", selected_year)), "List of players"),
+        (esc(scoped_link(current_page, "data.html", selected_year)), "Underlying data"),
     ])
 
-    write(docs / "index.html", page(SITE_TITLE, body))
+    title = SITE_TITLE if selected_year is None else f"{SITE_TITLE} — {selected_year}"
+    write(docs / current_page, page(title, body, nav))
 
 
-def build_games_pages(rows: list[dict], docs: Path) -> None:
-    games = group_by_game(rows)
+def build_games_portal_page(all_rows: list[dict], docs: Path, selected_year: int | None = None) -> None:
+    page_path = "games/index.html"
+    current_page = scoped_path(page_path, selected_year)
+    rows = scope_rows(all_rows, selected_year)
+
+    nav = season_nav(
+        current_page=current_page,
+        page_path=page_path,
+        all_rows=all_rows,
+        selected_year=selected_year,
+    )
+
+    body = games_portal_table(rows, rows, current_page)
+    body += f'<p><a href="{esc(scoped_link(current_page, "index.html", selected_year))}">Back to home</a></p>'
+
+    title = "Games" if selected_year is None else f"Games — {selected_year}"
+    write(docs / current_page, page(title, body, nav))
+
+
+def build_players_portal_page(all_rows: list[dict], docs: Path, selected_year: int | None = None) -> None:
+    page_path = "players/index.html"
+    current_page = scoped_path(page_path, selected_year)
+    rows = scope_rows(all_rows, selected_year)
+
+    nav = season_nav(
+        current_page=current_page,
+        page_path=page_path,
+        all_rows=all_rows,
+        selected_year=selected_year,
+    )
+
+    body = players_portal_table(rows, rows, current_page, selected_year)
+    body += f'<p><a href="{esc(scoped_link(current_page, "index.html", selected_year))}">Back to home</a></p>'
+
+    title = "Players" if selected_year is None else f"Players — {selected_year}"
+    write(docs / current_page, page(title, body, nav))
+
+
+def build_player_page(all_rows: list[dict], docs: Path, player: str, selected_year: int | None = None) -> None:
+    page_path = f"players/{player.lower()}.html"
+    current_page = scoped_path(page_path, selected_year)
+    rows = scope_rows(all_rows, selected_year)
+
+    nav = season_nav(
+        current_page=current_page,
+        page_path=page_path,
+        all_rows=all_rows,
+        selected_year=selected_year,
+    )
+
+    body = (
+        player_average_stat(player, rows, rows)
+        + hole_breakdown_table(rows, [player])
+        + f'<p><a href="{esc(scoped_link(current_page, "players/index.html", selected_year))}">Back to players</a></p>'
+    )
+
+    title = player if selected_year is None else f"{player} — {selected_year}"
+    write(docs / current_page, page(title, body, nav))
+
+
+def build_data_page(all_rows: list[dict], docs: Path, selected_year: int | None = None) -> None:
+    page_path = "data.html"
+    current_page = scoped_path(page_path, selected_year)
+    rows = scope_rows(all_rows, selected_year)
+
+    nav = season_nav(
+        current_page=current_page,
+        page_path=page_path,
+        all_rows=all_rows,
+        selected_year=selected_year,
+    )
+
+    body = full_data_table(rows)
+    body += f'<p><a href="{esc(scoped_link(current_page, "index.html", selected_year))}">Back to home</a></p>'
+
+    title = "Underlying Data" if selected_year is None else f"Underlying Data — {selected_year}"
+    write(docs / current_page, page(title, body, nav))
+
+
+def build_individual_game_pages(all_rows: list[dict], docs: Path) -> None:
+    games = group_by_game(all_rows)
 
     for game_number, game_rows in games.items():
         first = game_rows[0]
+        game_year = row_year(first)
 
         body = (
             f'<p class="meta">{esc(first["Date"])} — {esc(first["Location"])}</p>'
-            + game_par_ranking_stat(game_rows, rows, game_number)
+            + game_par_ranking_stat(game_rows, all_rows, game_number)
             + hole_breakdown_table(game_rows)
             + scorecard_table(game_rows)
-            + '<p><a href="index.html">Back to games</a></p>'
+            + f'<p><a href="{esc(rel_link(f"games/game_{game_number}.html", scoped_path("games/index.html", game_year)))}">Back to season games</a></p>'
+            + '<p><a href="index.html">Back to all games</a></p>'
         )
 
         write(docs / "games" / f"game_{game_number}.html", page(f"Game {game_number}", body))
 
-    body = games_portal_table(rows)
-    body += '<p><a href="../index.html">Back to home</a></p>'
-
-    write(docs / "games" / "index.html", page("Games", body))
-
-
-def build_player_pages(rows: list[dict], docs: Path) -> None:
-    for player in PLAYERS:
-        body = (
-            player_average_stat(player, rows)
-            + hole_breakdown_table(rows, [player])
-            + player_game_table(player, rows)
-            + '<p><a href="index.html">Back to players</a></p>'
-        )
-
-        write(docs / "players" / f"{player.lower()}.html", page(player, body))
-
-    body = players_portal_table(rows)
-    body += '<p><a href="../index.html">Back to home</a></p>'
-
-    write(docs / "players" / "index.html", page("Players", body))
-
-
-def build_data_page(rows: list[dict], docs: Path) -> None:
-    body = full_data_table(rows)
-    body += '<p><a href="index.html">Back to home</a></p>'
-
-    write(docs / "data.html", page("Underlying Data", body))
-
 
 def build_site() -> None:
-    rows = read_rows(CSV_FILE)
+    all_rows = read_rows(CSV_FILE)
+    years = available_years(all_rows)
 
     docs = Path(DOCS_DIR)
 
@@ -985,10 +1132,27 @@ def build_site() -> None:
 
     docs.mkdir(parents=True, exist_ok=True)
 
-    build_home_page(rows, docs)
-    build_games_pages(rows, docs)
-    build_player_pages(rows, docs)
-    build_data_page(rows, docs)
+    # All-time pages.
+    build_home_page(all_rows, docs, None)
+    build_games_portal_page(all_rows, docs, None)
+    build_players_portal_page(all_rows, docs, None)
+    build_data_page(all_rows, docs, None)
+
+    for player in PLAYERS:
+        build_player_page(all_rows, docs, player, None)
+
+    # Season pages.
+    for year in years:
+        build_home_page(all_rows, docs, year)
+        build_games_portal_page(all_rows, docs, year)
+        build_players_portal_page(all_rows, docs, year)
+        build_data_page(all_rows, docs, year)
+
+        for player in PLAYERS:
+            build_player_page(all_rows, docs, player, year)
+
+    # Individual games are canonical pages, not duplicated per season.
+    build_individual_game_pages(all_rows, docs)
 
     print(f"Built {DOCS_DIR}/")
 

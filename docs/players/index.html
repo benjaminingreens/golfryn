@@ -123,6 +123,34 @@
             margin: 0.9em 0;
         }
 
+        .season-nav-wrap {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0 0 1em 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.6em;
+        }
+
+        .season-nav {
+            display: flex;
+            gap: 0.8em;
+            white-space: nowrap;
+            min-width: max-content;
+            font-size: 0.9em;
+        }
+
+        .season-nav a,
+        .season-current {
+            border: 1px solid #444;
+            padding: 0.25em 0.55em;
+            text-decoration: none;
+        }
+
+        .season-current {
+            font-weight: 700;
+            background-color: #1a1a1a;
+        }
+
         .stat {
             border: 1px solid #444;
             border-radius: 0;
@@ -231,7 +259,8 @@
 <body>
     <div class="content">
 <h1>Players</h1>
-<h2>Players</h2>
+<div class="season-nav-wrap"><div class="season-nav"><span class="season-current">All time</span>
+<a href="../season_2026/players/index.html">Current season (2026)</a></div></div><h2>Players</h2>
 <div class="table-scroll">
 <table>
 <thead>
