@@ -83,13 +83,6 @@ HTML_START = """<!DOCTYPE html>
             }
         }
 
-        .content,
-        .content * {
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            hyphens: auto;
-        }
-
         h1, h2, h3 {
             text-align: left;
             line-height: 1.2;
@@ -277,7 +270,7 @@ def strokes(score_vs_par: int, par: int) -> int:
     return par + score_vs_par
 
 
-def player_total(rows: list[dict], player: str) -> int:
+def player_total_vs_par(rows: list[dict], player: str) -> int:
     return sum(row[player] for row in rows if row[player] is not None)
 
 
@@ -285,12 +278,12 @@ def player_holes(rows: list[dict], player: str) -> int:
     return sum(1 for row in rows if row[player] is not None)
 
 
-def player_average(rows: list[dict], player: str) -> float:
+def player_average_vs_par(rows: list[dict], player: str) -> float:
     holes = player_holes(rows, player)
-    return player_total(rows, player) / holes if holes else 0
+    return player_total_vs_par(rows, player) / holes if holes else 0
 
 
-def player_strokes(rows: list[dict], player: str) -> int:
+def player_total_strokes(rows: list[dict], player: str) -> int:
     return sum(
         strokes(row[player], row["Par"])
         for row in rows
@@ -298,25 +291,33 @@ def player_strokes(rows: list[dict], player: str) -> int:
     )
 
 
-def collective_total(rows: list[dict]) -> int:
-    return sum(player_total(rows, player) for player in PLAYERS)
+def total_course_par(rows: list[dict]) -> int:
+    return sum(row["Par"] for row in rows)
+
+
+def collective_total_vs_par(rows: list[dict]) -> int:
+    return sum(player_total_vs_par(rows, player) for player in PLAYERS)
 
 
 def collective_holes(rows: list[dict]) -> int:
     return sum(player_holes(rows, player) for player in PLAYERS)
 
 
-def collective_average(rows: list[dict]) -> float:
+def collective_average_vs_par(rows: list[dict]) -> float:
     holes = collective_holes(rows)
-    return collective_total(rows) / holes if holes else 0
+    return collective_total_vs_par(rows) / holes if holes else 0
+
+
+def collective_total_strokes(rows: list[dict]) -> int:
+    return sum(player_total_strokes(rows, player) for player in PLAYERS)
 
 
 def ranking_by_average(rows: list[dict]) -> list[str]:
     return sorted(
         PLAYERS,
         key=lambda player: (
-            player_average(rows, player),
-            player_total(rows, player),
+            player_average_vs_par(rows, player),
+            player_total_vs_par(rows, player),
         )
     )
 
@@ -325,8 +326,8 @@ def ranking_by_total(rows: list[dict]) -> list[str]:
     return sorted(
         PLAYERS,
         key=lambda player: (
-            player_total(rows, player),
-            player_average(rows, player),
+            player_total_vs_par(rows, player),
+            player_average_vs_par(rows, player),
         )
     )
 
@@ -343,14 +344,14 @@ def previous_game_average(all_rows: list[dict], game_number: int | None = None) 
         if len(game_numbers) < 2:
             return 0
 
-        return collective_average(games[game_numbers[-2]])
+        return collective_average_vs_par(games[game_numbers[-2]])
 
     previous_games = [g for g in sorted(games) if g < game_number]
 
     if not previous_games:
         return 0
 
-    return collective_average(games[previous_games[-1]])
+    return collective_average_vs_par(games[previous_games[-1]])
 
 
 def trend_arrow(current: float, previous: float) -> str:
@@ -388,7 +389,7 @@ def shot_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
             "Par": par,
             "Under par": under,
             "Total holes": over + par + under,
-            "Total strokes": player_strokes(rows, player),
+            "Total shots": player_total_strokes(rows, player),
         }
 
     return out
@@ -415,8 +416,8 @@ def link_list(items: list[tuple[str, str]]) -> str:
 
 def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     ranking = ranking_by_average(rows)
-    total = collective_total(rows)
-    average = collective_average(rows)
+    total = collective_total_vs_par(rows)
+    average = collective_average_vs_par(rows)
 
     games = group_by_game(all_rows)
     latest_game = max(games) if games else None
@@ -433,8 +434,8 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
     for player in ranking:
         lines.append(
             f"<li><strong>{esc(player)}</strong>: "
-            f"{score_fmt(player_average(rows, player))} "
-            f'<span class="small-detail">({score_fmt(player_total(rows, player))} total)</span>'
+            f"{score_fmt(player_average_vs_par(rows, player))} "
+            f'<span class="small-detail">({score_fmt(player_total_vs_par(rows, player))} total)</span>'
             "</li>"
         )
 
@@ -451,8 +452,8 @@ def average_vs_par_stat(rows: list[dict], all_rows: list[dict]) -> str:
 
 def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_number: int) -> str:
     ranking = ranking_by_total(game_rows)
-    total = collective_total(game_rows)
-    average = collective_average(game_rows)
+    total = collective_total_vs_par(game_rows)
+    average = collective_average_vs_par(game_rows)
     previous = previous_game_average(all_rows, game_number)
     arrow = trend_arrow(average, previous)
 
@@ -466,14 +467,14 @@ def game_par_ranking_stat(game_rows: list[dict], all_rows: list[dict], game_numb
     for player in ranking:
         lines.append(
             f"<li><strong>{esc(player)}</strong>: "
-            f"{score_fmt(player_total(game_rows, player))} "
-            f'<span class="small-detail">({score_fmt(player_average(game_rows, player))} average)</span>'
+            f"{score_fmt(player_total_vs_par(game_rows, player))} "
+            f'<span class="small-detail">({score_fmt(player_average_vs_par(game_rows, player))} average)</span>'
             "</li>"
         )
 
     lines += [
         "</ol>",
-        '<div class="stat-label">Collective score</div>',
+        '<div class="stat-label">Collective score vs par</div>',
         f'<div class="big-number">{score_fmt(total)} {arrow}</div>',
         f'<div class="small-detail">average {score_fmt(average)} between all players</div>',
         "</div>",
@@ -488,8 +489,8 @@ def player_average_stat(player: str, rows: list[dict]) -> str:
 
 <div class="stat">
     <div class="stat-label">{esc(player)}</div>
-    <div class="big-number">{score_fmt(player_average(rows, player))}</div>
-    <div class="small-detail">overall {score_fmt(player_total(rows, player))}</div>
+    <div class="big-number">{score_fmt(player_average_vs_par(rows, player))}</div>
+    <div class="small-detail">overall {score_fmt(player_total_vs_par(rows, player))}</div>
 </div>
 """
 
@@ -503,7 +504,7 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Player</th><th>Over par</th><th>Par</th><th>Under par</th><th>Total holes</th><th>Total strokes</th></tr>",
+        "<tr><th>Player</th><th>Over par holes</th><th>Par holes</th><th>Under par holes</th><th>Total holes</th><th>Total shots</th></tr>",
         "</thead>",
         "<tbody>",
     ]
@@ -518,7 +519,7 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
             f"<td>{d['Par']}</td>"
             f"<td>{d['Under par']}</td>"
             f"<td>{d['Total holes']}</td>"
-            f"<td>{d['Total strokes']}</td>"
+            f"<td>{d['Total shots']}</td>"
             "</tr>"
         )
 
@@ -527,7 +528,7 @@ def shot_breakdown_table(rows: list[dict], players: list[str] | None = None) -> 
 
 
 def scorecard_table(rows: list[dict]) -> str:
-    total_par = sum(row["Par"] for row in rows)
+    course_par = total_course_par(rows)
 
     lines = [
         "<h2>Scorecard</h2>",
@@ -554,21 +555,21 @@ def scorecard_table(rows: list[dict]) -> str:
     lines.append(
         "<tr>"
         "<th>Total vs par</th>"
-        f"<th>{total_par}</th>"
-        f"<th>{score_fmt(player_total(rows, 'Tom'))}</th>"
-        f"<th>{score_fmt(player_total(rows, 'Jonny'))}</th>"
-        f"<th>{score_fmt(player_total(rows, 'Ben'))}</th>"
+        f"<th>{course_par}</th>"
+        f"<th>{score_fmt(player_total_vs_par(rows, 'Tom'))}</th>"
+        f"<th>{score_fmt(player_total_vs_par(rows, 'Jonny'))}</th>"
+        f"<th>{score_fmt(player_total_vs_par(rows, 'Ben'))}</th>"
         "<th></th>"
         "</tr>"
     )
 
     lines.append(
         "<tr>"
-        "<th>Total strokes</th>"
+        "<th>Total shots</th>"
         "<th></th>"
-        f"<th>{player_strokes(rows, 'Tom')}</th>"
-        f"<th>{player_strokes(rows, 'Jonny')}</th>"
-        f"<th>{player_strokes(rows, 'Ben')}</th>"
+        f"<th>{player_total_strokes(rows, 'Tom')}</th>"
+        f"<th>{player_total_strokes(rows, 'Jonny')}</th>"
+        f"<th>{player_total_strokes(rows, 'Ben')}</th>"
         "<th></th>"
         "</tr>"
     )
@@ -614,7 +615,7 @@ def player_game_table(player: str, rows: list[dict]) -> str:
         '<div class="table-scroll">',
         "<table>",
         "<thead>",
-        "<tr><th>Game</th><th>Date</th><th>Location</th><th>Total vs par</th><th>Average vs par</th><th>Total strokes</th></tr>",
+        "<tr><th>Game</th><th>Date</th><th>Location</th><th>Total vs par</th><th>Average vs par</th><th>Total shots</th></tr>",
         "</thead>",
         "<tbody>",
     ]
@@ -627,9 +628,9 @@ def player_game_table(player: str, rows: list[dict]) -> str:
             f'<td><a href="../games/game_{game_number}.html">Game {game_number}</a></td>'
             f"<td>{esc(first['Date'])}</td>"
             f"<td>{esc(first['Location'])}</td>"
-            f"<td>{score_fmt(player_total(game_rows, player))}</td>"
-            f"<td>{score_fmt(player_average(game_rows, player))}</td>"
-            f"<td>{player_strokes(game_rows, player)}</td>"
+            f"<td>{score_fmt(player_total_vs_par(game_rows, player))}</td>"
+            f"<td>{score_fmt(player_average_vs_par(game_rows, player))}</td>"
+            f"<td>{player_total_strokes(game_rows, player)}</td>"
             "</tr>"
         )
 
