@@ -123,15 +123,14 @@
             margin: 0.9em 0;
         }
 
-        .season-nav-wrap {
+        .nav-wrap {
             width: 100%;
             overflow-x: auto;
-            margin: 0 0 1em 0;
-            border-bottom: 1px solid #444;
-            padding-bottom: 0.6em;
+            margin: 0 0 0.7em 0;
+            padding-bottom: 0.4em;
         }
 
-        .season-nav {
+        .nav-row {
             display: flex;
             gap: 0.8em;
             white-space: nowrap;
@@ -139,16 +138,21 @@
             font-size: 0.9em;
         }
 
-        .season-nav a,
-        .season-current {
+        .nav-row a,
+        .nav-current {
             border: 1px solid #444;
             padding: 0.25em 0.55em;
             text-decoration: none;
         }
 
-        .season-current {
+        .nav-current {
             font-weight: 700;
             background-color: #1a1a1a;
+        }
+
+        .nav-separator {
+            border-bottom: 1px solid #444;
+            margin: 0 0 1em 0;
         }
 
         .stat {

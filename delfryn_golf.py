@@ -143,15 +143,14 @@ HTML_START = """<!DOCTYPE html>
             margin: 0.9em 0;
         }
 
-        .season-nav-wrap {
+        .nav-wrap {
             width: 100%;
             overflow-x: auto;
-            margin: 0 0 1em 0;
-            border-bottom: 1px solid #444;
-            padding-bottom: 0.6em;
+            margin: 0 0 0.7em 0;
+            padding-bottom: 0.4em;
         }
 
-        .season-nav {
+        .nav-row {
             display: flex;
             gap: 0.8em;
             white-space: nowrap;
@@ -159,16 +158,21 @@ HTML_START = """<!DOCTYPE html>
             font-size: 0.9em;
         }
 
-        .season-nav a,
-        .season-current {
+        .nav-row a,
+        .nav-current {
             border: 1px solid #444;
             padding: 0.25em 0.55em;
             text-decoration: none;
         }
 
-        .season-current {
+        .nav-current {
             font-weight: 700;
             background-color: #1a1a1a;
+        }
+
+        .nav-separator {
+            border-bottom: 1px solid #444;
+            margin: 0 0 1em 0;
         }
 
         .stat {
@@ -417,6 +421,48 @@ def rel_link(current_page: str, target_page: str) -> str:
     return posixpath.relpath(target_page, start=start)
 
 
+def nav_row(items: list[tuple[str, str, bool]]) -> str:
+    parts = []
+
+    for href, label, selected in items:
+        if selected:
+            parts.append(f'<span class="nav-current">{esc(label)}</span>')
+        else:
+            parts.append(f'<a href="{esc(href)}">{esc(label)}</a>')
+
+    return (
+        '<div class="nav-wrap">'
+        '<div class="nav-row">'
+        + "\n".join(parts)
+        + "</div></div>"
+    )
+
+
+def menu_nav(*, current_page: str, selected_year: int | None) -> str:
+    menu_items = [
+        ("index.html", "Home"),
+        ("games/index.html", "Games"),
+        ("players/index.html", "Players"),
+        ("data.html", "Data"),
+    ]
+
+    current_base = current_page
+
+    if current_base.startswith("season_"):
+        parts = current_base.split("/", 1)
+        current_base = parts[1] if len(parts) > 1 else "index.html"
+
+    items = []
+
+    for page_path, label in menu_items:
+        target = scoped_path(page_path, selected_year)
+        href = rel_link(current_page, target)
+        selected = current_base == page_path
+        items.append((href, label, selected))
+
+    return nav_row(items)
+
+
 def season_nav(
     *,
     current_page: str,
@@ -427,40 +473,49 @@ def season_nav(
     years = available_years(all_rows)
     current_year = current_season_year(all_rows)
 
-    items: list[str] = []
+    items: list[tuple[str, str, bool]] = []
 
-    all_time_target = scoped_path(page_path, None)
-    current_target = scoped_path(page_path, current_year)
+    items.append((
+        rel_link(current_page, scoped_path(page_path, None)),
+        "All time",
+        selected_year is None,
+    ))
 
-    if selected_year is None:
-        items.append('<span class="season-current">All time</span>')
-    else:
-        items.append(f'<a href="{esc(rel_link(current_page, all_time_target))}">All time</a>')
-
-    current_label = f"Current season ({current_year})"
-
-    if selected_year == current_year:
-        items.append(f'<span class="season-current">{esc(current_label)}</span>')
-    else:
-        items.append(f'<a href="{esc(rel_link(current_page, current_target))}">{esc(current_label)}</a>')
+    items.append((
+        rel_link(current_page, scoped_path(page_path, current_year)),
+        f"Current season ({current_year})",
+        selected_year == current_year,
+    ))
 
     for year in years:
         if year == current_year:
             continue
 
-        label = str(year)
-        target = scoped_path(page_path, year)
+        items.append((
+            rel_link(current_page, scoped_path(page_path, year)),
+            str(year),
+            selected_year == year,
+        ))
 
-        if selected_year == year:
-            items.append(f'<span class="season-current">{esc(label)}</span>')
-        else:
-            items.append(f'<a href="{esc(rel_link(current_page, target))}">{esc(label)}</a>')
+    return nav_row(items)
 
+
+def top_nav(
+    *,
+    current_page: str,
+    page_path: str,
+    all_rows: list[dict],
+    selected_year: int | None,
+) -> str:
     return (
-        '<div class="season-nav-wrap">'
-        '<div class="season-nav">'
-        + "\n".join(items)
-        + "</div></div>"
+        menu_nav(current_page=current_page, selected_year=selected_year)
+        + season_nav(
+            current_page=current_page,
+            page_path=page_path,
+            all_rows=all_rows,
+            selected_year=selected_year,
+        )
+        + '<div class="nav-separator"></div>'
     )
 
 
@@ -639,29 +694,6 @@ def hole_breakdown(rows: list[dict]) -> dict[str, dict[str, int]]:
         }
 
     return out
-
-
-def link_list(items: list[tuple[str, str]]) -> str:
-    lines = ["<ul>"]
-
-    for href, label in items:
-        lines.append(f'<li><a href="{href}">{esc(label)}</a></li>')
-
-    lines.append("</ul>")
-    return "\n".join(lines)
-
-
-def footer_links(items: list[tuple[str, str]]) -> str:
-    lines = ["<hr>"]
-
-    for href, label in items:
-        lines.append(f'<p><strong><a href="{href}">{esc(label)}</a></strong></p>')
-
-    return "\n".join(lines)
-
-
-def scoped_link(current_page: str, target_page_path: str, selected_year: int | None) -> str:
-    return rel_link(current_page, scoped_path(target_page_path, selected_year))
 
 
 def average_vs_par_stat(rows: list[dict], comparison_rows: list[dict]) -> str:
@@ -996,7 +1028,12 @@ def games_portal_table(rows: list[dict], comparison_rows: list[dict], current_pa
     return "\n".join(lines)
 
 
-def players_portal_table(rows: list[dict], comparison_rows: list[dict], current_page: str, selected_year: int | None) -> str:
+def players_portal_table(
+    rows: list[dict],
+    comparison_rows: list[dict],
+    current_page: str,
+    selected_year: int | None,
+) -> str:
     players = ranking_by_average(rows)
 
     lines = [
@@ -1042,7 +1079,7 @@ def build_home_page(all_rows: list[dict], docs: Path, selected_year: int | None 
     current_page = scoped_path(page_path, selected_year)
     rows = scope_rows(all_rows, selected_year)
 
-    nav = season_nav(
+    nav = top_nav(
         current_page=current_page,
         page_path=page_path,
         all_rows=all_rows,
@@ -1053,12 +1090,6 @@ def build_home_page(all_rows: list[dict], docs: Path, selected_year: int | None 
     body += average_vs_par_stat(rows, rows)
     body += hole_breakdown_table(rows)
 
-    body += footer_links([
-        (esc(scoped_link(current_page, "games/index.html", selected_year)), "List of games"),
-        (esc(scoped_link(current_page, "players/index.html", selected_year)), "List of players"),
-        (esc(scoped_link(current_page, "data.html", selected_year)), "Underlying data"),
-    ])
-
     title = SITE_TITLE if selected_year is None else f"{SITE_TITLE} — {selected_year}"
     write(docs / current_page, page(title, body, nav))
 
@@ -1068,7 +1099,7 @@ def build_games_portal_page(all_rows: list[dict], docs: Path, selected_year: int
     current_page = scoped_path(page_path, selected_year)
     rows = scope_rows(all_rows, selected_year)
 
-    nav = season_nav(
+    nav = top_nav(
         current_page=current_page,
         page_path=page_path,
         all_rows=all_rows,
@@ -1076,7 +1107,7 @@ def build_games_portal_page(all_rows: list[dict], docs: Path, selected_year: int
     )
 
     body = games_portal_table(rows, rows, current_page)
-    body += f'<p><a href="{esc(scoped_link(current_page, "index.html", selected_year))}">Back to home</a></p>'
+    body += f'<p><a href="{esc(rel_link(current_page, scoped_path("index.html", selected_year)))}">Back to home</a></p>'
 
     title = "Games" if selected_year is None else f"Games — {selected_year}"
     write(docs / current_page, page(title, body, nav))
@@ -1087,7 +1118,7 @@ def build_players_portal_page(all_rows: list[dict], docs: Path, selected_year: i
     current_page = scoped_path(page_path, selected_year)
     rows = scope_rows(all_rows, selected_year)
 
-    nav = season_nav(
+    nav = top_nav(
         current_page=current_page,
         page_path=page_path,
         all_rows=all_rows,
@@ -1095,18 +1126,23 @@ def build_players_portal_page(all_rows: list[dict], docs: Path, selected_year: i
     )
 
     body = players_portal_table(rows, rows, current_page, selected_year)
-    body += f'<p><a href="{esc(scoped_link(current_page, "index.html", selected_year))}">Back to home</a></p>'
+    body += f'<p><a href="{esc(rel_link(current_page, scoped_path("index.html", selected_year)))}">Back to home</a></p>'
 
     title = "Players" if selected_year is None else f"Players — {selected_year}"
     write(docs / current_page, page(title, body, nav))
 
 
-def build_player_page(all_rows: list[dict], docs: Path, player: str, selected_year: int | None = None) -> None:
+def build_player_page(
+    all_rows: list[dict],
+    docs: Path,
+    player: str,
+    selected_year: int | None = None,
+) -> None:
     page_path = f"players/{player.lower()}.html"
     current_page = scoped_path(page_path, selected_year)
     rows = scope_rows(all_rows, selected_year)
 
-    nav = season_nav(
+    nav = top_nav(
         current_page=current_page,
         page_path=page_path,
         all_rows=all_rows,
@@ -1116,7 +1152,7 @@ def build_player_page(all_rows: list[dict], docs: Path, player: str, selected_ye
     body = (
         player_average_stat(player, rows, rows)
         + hole_breakdown_table(rows, [player])
-        + f'<p><a href="{esc(scoped_link(current_page, "players/index.html", selected_year))}">Back to players</a></p>'
+        + f'<p><a href="{esc(rel_link(current_page, scoped_path("players/index.html", selected_year)))}">Back to players</a></p>'
     )
 
     title = player if selected_year is None else f"{player} — {selected_year}"
@@ -1128,7 +1164,7 @@ def build_data_page(all_rows: list[dict], docs: Path, selected_year: int | None 
     current_page = scoped_path(page_path, selected_year)
     rows = scope_rows(all_rows, selected_year)
 
-    nav = season_nav(
+    nav = top_nav(
         current_page=current_page,
         page_path=page_path,
         all_rows=all_rows,
@@ -1136,7 +1172,7 @@ def build_data_page(all_rows: list[dict], docs: Path, selected_year: int | None 
     )
 
     body = full_data_table(rows)
-    body += f'<p><a href="{esc(scoped_link(current_page, "index.html", selected_year))}">Back to home</a></p>'
+    body += f'<p><a href="{esc(rel_link(current_page, scoped_path("index.html", selected_year)))}">Back to home</a></p>'
 
     title = "Underlying Data" if selected_year is None else f"Underlying Data — {selected_year}"
     write(docs / current_page, page(title, body, nav))
