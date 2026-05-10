@@ -457,7 +457,14 @@ def menu_nav(*, current_page: str, selected_year: int | None) -> str:
     for page_path, label in menu_items:
         target = scoped_path(page_path, selected_year)
         href = rel_link(current_page, target)
-        selected = current_base == page_path
+
+        if page_path == "games/index.html":
+            selected = current_base == page_path or current_base.startswith("games/")
+        elif page_path == "players/index.html":
+            selected = current_base == page_path or current_base.startswith("players/")
+        else:
+            selected = current_base == page_path
+
         items.append((href, label, selected))
 
     return nav_row(items)
@@ -500,6 +507,29 @@ def season_nav(
     return nav_row(items)
 
 
+def game_nav(
+    *,
+    current_page: str,
+    all_rows: list[dict],
+    selected_game: int,
+) -> str:
+    games = group_by_game(all_rows)
+
+    items: list[tuple[str, str, bool]] = []
+
+    for game_number in sorted(games):
+        target = f"games/game_{game_number}.html"
+        href = rel_link(current_page, target)
+
+        items.append((
+            href,
+            f"Game {game_number}",
+            game_number == selected_game,
+        ))
+
+    return nav_row(items)
+
+
 def top_nav(
     *,
     current_page: str,
@@ -514,6 +544,23 @@ def top_nav(
             page_path=page_path,
             all_rows=all_rows,
             selected_year=selected_year,
+        )
+        + '<div class="nav-separator"></div>'
+    )
+
+
+def top_game_nav(
+    *,
+    current_page: str,
+    all_rows: list[dict],
+    selected_game: int,
+) -> str:
+    return (
+        menu_nav(current_page=current_page, selected_year=None)
+        + game_nav(
+            current_page=current_page,
+            all_rows=all_rows,
+            selected_game=selected_game,
         )
         + '<div class="nav-separator"></div>'
     )
@@ -1182,19 +1229,29 @@ def build_individual_game_pages(all_rows: list[dict], docs: Path) -> None:
     games = group_by_game(all_rows)
 
     for game_number, game_rows in games.items():
+        current_page = f"games/game_{game_number}.html"
         first = game_rows[0]
         game_year = row_year(first)
+
+        nav = top_game_nav(
+            current_page=current_page,
+            all_rows=all_rows,
+            selected_game=game_number,
+        )
 
         body = (
             f'<p class="meta">{esc(first["Date"])} — {esc(first["Location"])}</p>'
             + game_par_ranking_stat(game_rows, all_rows, game_number)
             + hole_breakdown_table(game_rows)
             + scorecard_table(game_rows)
-            + f'<p><a href="{esc(rel_link(f"games/game_{game_number}.html", scoped_path("games/index.html", game_year)))}">Back to season games</a></p>'
+            + f'<p><a href="{esc(rel_link(current_page, scoped_path("games/index.html", game_year)))}">Back to season games</a></p>'
             + '<p><a href="index.html">Back to all games</a></p>'
         )
 
-        write(docs / "games" / f"game_{game_number}.html", page(f"Game {game_number}", body))
+        write(
+            docs / current_page,
+            page(f"Game {game_number}", body, nav),
+        )
 
 
 def build_site() -> None:
