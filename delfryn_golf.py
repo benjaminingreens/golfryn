@@ -1154,7 +1154,6 @@ def build_games_portal_page(all_rows: list[dict], docs: Path, selected_year: int
     )
 
     body = games_portal_table(rows, rows, current_page)
-    body += f'<p><a href="{esc(rel_link(current_page, scoped_path("index.html", selected_year)))}">Back to home</a></p>'
 
     title = "Games" if selected_year is None else f"Games — {selected_year}"
     write(docs / current_page, page(title, body, nav))
@@ -1173,7 +1172,6 @@ def build_players_portal_page(all_rows: list[dict], docs: Path, selected_year: i
     )
 
     body = players_portal_table(rows, rows, current_page, selected_year)
-    body += f'<p><a href="{esc(rel_link(current_page, scoped_path("index.html", selected_year)))}">Back to home</a></p>'
 
     title = "Players" if selected_year is None else f"Players — {selected_year}"
     write(docs / current_page, page(title, body, nav))
@@ -1199,7 +1197,6 @@ def build_player_page(
     body = (
         player_average_stat(player, rows, rows)
         + hole_breakdown_table(rows, [player])
-        + f'<p><a href="{esc(rel_link(current_page, scoped_path("players/index.html", selected_year)))}">Back to players</a></p>'
     )
 
     title = player if selected_year is None else f"{player} — {selected_year}"
@@ -1219,7 +1216,6 @@ def build_data_page(all_rows: list[dict], docs: Path, selected_year: int | None 
     )
 
     body = full_data_table(rows)
-    body += f'<p><a href="{esc(rel_link(current_page, scoped_path("index.html", selected_year)))}">Back to home</a></p>'
 
     title = "Underlying Data" if selected_year is None else f"Underlying Data — {selected_year}"
     write(docs / current_page, page(title, body, nav))
@@ -1231,7 +1227,6 @@ def build_individual_game_pages(all_rows: list[dict], docs: Path) -> None:
     for game_number, game_rows in games.items():
         current_page = f"games/game_{game_number}.html"
         first = game_rows[0]
-        game_year = row_year(first)
 
         nav = top_game_nav(
             current_page=current_page,
@@ -1244,8 +1239,6 @@ def build_individual_game_pages(all_rows: list[dict], docs: Path) -> None:
             + game_par_ranking_stat(game_rows, all_rows, game_number)
             + hole_breakdown_table(game_rows)
             + scorecard_table(game_rows)
-            + f'<p><a href="{esc(rel_link(current_page, scoped_path("games/index.html", game_year)))}">Back to season games</a></p>'
-            + '<p><a href="index.html">Back to all games</a></p>'
         )
 
         write(
