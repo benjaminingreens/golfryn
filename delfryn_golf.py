@@ -651,6 +651,15 @@ def link_list(items: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def footer_links(items: list[tuple[str, str]]) -> str:
+    lines = ["<hr>"]
+
+    for href, label in items:
+        lines.append(f'<p><strong><a href="{href}">{esc(label)}</a></strong></p>')
+
+    return "\n".join(lines)
+
+
 def scoped_link(current_page: str, target_page_path: str, selected_year: int | None) -> str:
     return rel_link(current_page, scoped_path(target_page_path, selected_year))
 
@@ -996,7 +1005,6 @@ def players_portal_table(rows: list[dict], comparison_rows: list[dict], current_
         "<table>",
         "<thead>",
         "<tr>"
-        "<th>Rank</th>"
         "<th>Player</th>"
         "<th>Average vs par</th>"
         "<th>Total vs par</th>"
@@ -1008,7 +1016,7 @@ def players_portal_table(rows: list[dict], comparison_rows: list[dict], current_
         "<tbody>",
     ]
 
-    for i, player in enumerate(players, start=1):
+    for player in players:
         avg = player_average_vs_par(rows, player)
         prev = previous_player_average(comparison_rows, player)
         player_page = scoped_path(f"players/{player.lower()}.html", selected_year)
@@ -1016,7 +1024,6 @@ def players_portal_table(rows: list[dict], comparison_rows: list[dict], current_
 
         lines.append(
             "<tr>"
-            f"<td>{i}</td>"
             f'<td><a href="{esc(player_link)}">{esc(player)}</a></td>'
             f"<td>{avg_fmt(avg, prev)}</td>"
             f"<td>{score_fmt(player_total_vs_par(rows, player))}</td>"
@@ -1046,8 +1053,7 @@ def build_home_page(all_rows: list[dict], docs: Path, selected_year: int | None 
     body += average_vs_par_stat(rows, rows)
     body += hole_breakdown_table(rows)
 
-    body += "<h2>Links</h2>"
-    body += link_list([
+    body += footer_links([
         (esc(scoped_link(current_page, "games/index.html", selected_year)), "List of games"),
         (esc(scoped_link(current_page, "players/index.html", selected_year)), "List of players"),
         (esc(scoped_link(current_page, "data.html", selected_year)), "Underlying data"),
