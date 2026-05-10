@@ -260,10 +260,31 @@ HTML_START = """<!DOCTYPE html>
             text-align: left;
             vertical-align: top;
             white-space: nowrap;
+            background-color: black;
         }
-
+        
         th {
             font-weight: 700;
+        }
+        
+        table th:first-child,
+        table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: black;
+        }
+        
+        table thead th:first-child {
+            z-index: 3;
+        }
+        
+        table tbody th:first-child {
+            z-index: 2;
+        }
+        
+        table .shaded {
+            background-color: #1a1a1a;
         }
 
         .shaded {
